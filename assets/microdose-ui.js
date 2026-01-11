@@ -210,11 +210,14 @@ Reglur:
 `
     }
   };
-// Safety: avoid hard crashes if optional hooks are referenced
-window.updateLastPowerFromWeekSelections =
-  window.updateLastPowerFromWeekSelections ||
-  function updateLastPowerFromWeekSelections() {};
+window.updateLastStrengthFromWeekSelections =
+  window.updateLastStrengthFromWeekSelections || function () {};
 
+window.updateLastPowerFromWeekSelections =
+  window.updateLastPowerFromWeekSelections || function () {};
+
+window.updateLastPlyoFromWeekSelections =
+  window.updateLastPlyoFromWeekSelections || function () {};
 
   const dagPanel = {
     section: document.getElementById('microdose-section'),
@@ -3910,9 +3913,11 @@ document.addEventListener('change', (e) => {
     updateLastStrengthFromWeekSelections();
   }
 });
-updateLastStrengthFromWeekSelections();
-updateLastPowerFromWeekSelections();
-updateLastPlyoFromWeekSelections();
+// Optional hooks (only if implemented)
+if (typeof updateLastStrengthFromWeekSelections === 'function') updateLastStrengthFromWeekSelections();
+if (typeof updateLastPowerFromWeekSelections === 'function') updateLastPowerFromWeekSelections();
+if (typeof updateLastPlyoFromWeekSelections === 'function') updateLastPlyoFromWeekSelections();
+
 
 // Guarded refreshLoadSelect wrapper (Netlify console ~3892)
 (function ensureRefreshLoadSelectGuard(){
