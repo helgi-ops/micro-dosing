@@ -3888,6 +3888,10 @@
     }
 
     function refreshLoadSelect() {
+      if (!loadSelect) {
+        console.warn('[microdose] refreshLoadSelect: loadSelect fannst ekki');
+        return;
+      }
       const map = readSavedPrograms();
       const current = loadSelect.value;
       loadSelect.innerHTML = '<option value=\"\">— Hlaða vistuðu —</option>';

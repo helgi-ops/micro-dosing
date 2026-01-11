@@ -3908,3 +3908,19 @@ document.addEventListener('change', (e) => {
 updateLastStrengthFromWeekSelections();
 updateLastPowerFromWeekSelections();
 updateLastPlyoFromWeekSelections();
+
+// Guarded refreshLoadSelect wrapper (Netlify console ~3892)
+(function ensureRefreshLoadSelectGuard(){
+  const prev = typeof window !== 'undefined' ? window.refreshLoadSelect : null;
+  window.refreshLoadSelect = function(...args) {
+    const loadSelect = document.getElementById('loadProgram');
+    if (!loadSelect) {
+      console.warn('[microdose] refreshLoadSelect: loadSelect fannst ekki');
+      return;
+    }
+    if (typeof prev === 'function') {
+      return prev.apply(this, args);
+    }
+    // fallback: no-op if there is no previous implementation
+  };
+})();
