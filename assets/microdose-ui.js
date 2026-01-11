@@ -210,6 +210,11 @@ Reglur:
 `
     }
   };
+// Safety: avoid hard crashes if optional hooks are referenced
+window.updateLastPowerFromWeekSelections =
+  window.updateLastPowerFromWeekSelections ||
+  function updateLastPowerFromWeekSelections() {};
+
 
   const dagPanel = {
     section: document.getElementById('microdose-section'),
