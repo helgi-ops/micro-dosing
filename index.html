@@ -574,11 +574,11 @@
               <h3>Áherslur dags</h3>
               <p>Uppfærðist aðeins þegar smellt er á dag.</p>
             </div>
-            <span id="microdose-status" class="tag" style="display:none;"></span>
+            <span id="microdose-status" class="tag" style="display:none;" aria-live="polite"></span>
           </div>
           <div class="microdose-grid">
             <label>Dagur vikunnar:
-              <select id="microdose-dagur">
+              <select id="microdose-dagur" aria-label="Dagur" data-focus-control="day" >
                 <option value="Mán">Mán</option>
                 <option value="Þri">Þri</option>
                 <option value="Mið">Mið</option>
@@ -592,7 +592,7 @@
               <input id="microdose-readiness" type="number" min="1" max="10" step="1" value="7" />
             </label>
             <label>Fókus í dag (t.d. hraði, styrkur, endurheimt):
-              <input id="microdose-focus" type="text" placeholder="Hraði + líkamsstjórn" />
+              <input id="microdose-focus" type="text" placeholder="Hraði + líkamsstjórn" data-focus-control="text" />
             </label>
           </div>
           <div class="inline-actions" style="margin-top:0.75rem;">

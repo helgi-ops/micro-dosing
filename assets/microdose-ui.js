@@ -215,10 +215,11 @@ Reglur:
     section: document.getElementById('microdose-section'),
     btn: document.getElementById('microdose-run'),
     dagur: document.getElementById('microdose-dagur'),
+    focusDaySelect: document.querySelector('#focusDaySelect') || document.getElementById('microdose-dagur'),
     readiness: document.getElementById('microdose-readiness'),
-    focus: document.getElementById('microdose-focus'),
+    focus: document.querySelector('#focusText') || document.getElementById('microdose-focus'),
     output: document.getElementById('microdose-output'),
-    status: document.getElementById('microdose-status')
+    status: document.querySelector('#focusNote') || document.getElementById('microdose-status')
   };
 
   const weekPanel = {
@@ -922,8 +923,11 @@ function updateAllResidualsFromWeek() {
   }
 
   function applyDayToPanel(dayData, sched) {
-    if (dagPanel.dagur) dagPanel.dagur.value = dayData?.dagur || sched?.dagur || 'Mán';
+    const dayVal = dayData?.dagur || sched?.dagur || 'Mán';
+    if (dagPanel.dagur) dagPanel.dagur.value = dayVal;
+    if (dagPanel.focusDaySelect) dagPanel.focusDaySelect.value = dayVal;
     if (dagPanel.focus) dagPanel.focus.value = sched?.dagskra ? `${sched.dagskra} + ${sched.alag}` : 'Hraði + styrkur';
+    if (dagPanel.status) dagPanel.status.textContent = dayData?.note || '';
     if (dagPanel.readiness) dagPanel.readiness.value = dayData?.readiness || mapLoadToReadiness(sched?.alag);
   }
 
@@ -942,6 +946,47 @@ function updateAllResidualsFromWeek() {
     }).join('');
     const msg = errorText ? `<div style="margin-bottom:8px;color:#f6d6a2;">${errorText}</div>` : '';
     weekPanel.output.innerHTML = `${msg}<div class="week-results">${cards}</div>`;
+  }
+
+  function getRecommendationForDay(dayKey) {
+    const schedule = readWeekScheduleFromUI();
+    const idx = ['man','tri','mid','fim','fos','lau','sun'].indexOf(normDayKey(dayKey));
+    if (idx === -1 || !schedule[idx]) return { focus: '', note: '' };
+    const s = schedule[idx];
+    const focus = `${s.dagskra || ''} · ${s.alag || ''}`.trim();
+    return { focus, note: s.note || '' };
+  }
+
+  function openDayInFocusPanel(dayKey){
+    const daySelect = dagPanel.focusDaySelect || document.querySelector('#focusDaySelect');
+    const focusText = dagPanel.focus || document.querySelector('#focusText');
+    const noteEl    = document.querySelector('#focusNote') || dagPanel.status;
+
+    if (!daySelect || !focusText) {
+      console.warn('Áherslur dags: vantar #focusDaySelect eða #focusText');
+      return;
+    }
+
+    const mapToUiValue = {
+      man: 'Mán',
+      tri: 'Þri',
+      mid: 'Mið',
+      fim: 'Fim',
+      fos: 'Fös',
+      lau: 'Lau',
+      sun: 'Sun'
+    };
+
+    const uiValue = mapToUiValue[dayKey] ?? mapToUiValue[normDayKey(dayKey)] ?? dayKey;
+    daySelect.value = uiValue;
+
+    const reco = getRecommendationForDay(dayKey);
+    focusText.value = reco.focus || reco.text || '';
+
+    if (noteEl) noteEl.textContent = reco.note || '';
+
+    const panel = document.querySelector('#focusPanel') || focusText.closest('.card') || focusText;
+    if (panel?.scrollIntoView) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   function getExposureValue() {
