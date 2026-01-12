@@ -900,6 +900,7 @@ function updateAllResidualsFromWeek() {
     if (!data || data.status !== 'ok' || !Array.isArray(data.week)) {
       weekPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
       return;
+      renderWeekCards();
     }
     weekPanel.status.textContent = `Vika: ${data.week_start || '—'} (smelltu á dag til að sjá æfingu)`;
     weekPanel.status.style.display = 'inline-block';
@@ -3967,4 +3968,4 @@ if (empty) empty.style.display = hasAny ? 'none' : 'block';
     `;
   }).join('');
 }
-renderWeekCards();
+
