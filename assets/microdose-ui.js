@@ -1174,6 +1174,7 @@ function updateAllResidualsFromWeek() {
   autofillResidualInputs();
   applyExposurePrefill();
   tryAutoLoadLastWeek();
+  renderWeekCards();
   dagPanel.btn?.addEventListener('click', runDayPlan);
   weekPanel.run?.addEventListener('click', runWeekPlan);
   weekPanel.resetBtn?.addEventListener('click', resetResiduals);
@@ -3987,4 +3988,3 @@ if (empty) empty.style.display = hasAny ? 'none' : 'block';
     `;
   }).join('');
 }
-
