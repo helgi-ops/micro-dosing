@@ -928,56 +928,21 @@ function updateAllResidualsFromWeek() {
     }
   }
 
- function renderWeekResult(data, schedule) {
-  if (!data || data.status !== 'ok' || !Array.isArray(data.week)) {
-    weekPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
-    renderWeekCards(); // vikan má ALDREI hverfa
-    return;
-  }
-
-  weekPanel.status.textContent =
-    `Vika: ${data.week_start || ''}`;
-
-  weekPanel.status.style.display = 'inline-block';
-
-  // 🔹 Bara texti / skilaboð fara hingað
-  weekPanel.output.innerHTML = `
-    <div class="week-result-note">
-      Vikuplan tilbúið.
-    </div>
-  `;
-
-  // 🔹 Kortin renderuð ALLTAF sér
-  renderWeekCards();
-}
+  function renderWeekResult(data, schedule) {
+    if (!data || data.status !== 'ok' || !Array.isArray(data.week)) {
+      weekPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
+      renderWeekCards();
+      return;
     }
-    weekPanel.status.textContent = `Vika: ${data.week_start || '—'} (smelltu á dag til að sjá æfingu)`;
+
+    weekPanel.status.textContent = `Vika: ${data.week_start || ''}`;
     weekPanel.status.style.display = 'inline-block';
-    const cards = data.week.map((day, idx) => {
-      const disp = mapDisplayPlan(day, schedule[idx], schedule[idx - 1], getExposureValue());
-      const trafficClass = day.traffic === 'grænt' ? 'traffic-green' : day.traffic === 'rautt' ? 'traffic-red' : 'traffic-yellow';
-      const note = day.residual_note ? `<div style="font-size:0.9rem; opacity:0.7;">${day.residual_note}</div>` : '';
-      const dayKey = normDayKey(day.dagur || dayNames[idx] || '');
-      return `<div class="week-day week-day-card" data-day="${dayKey}" data-day-index="${idx}">
-        <div><strong>${day.dagur}</strong> <span class="tag ${trafficClass}">${day.traffic}</span></div>
-        <div>${disp.template || day.stefna || '—'} ${disp.time || day.minutur ? '· ' + (disp.time || day.minutur) : ''}</div>
-        <div style="font-size:0.9rem; opacity:0.9;">Dagskrá: ${schedule[idx]?.dagskra || ''} · Álag: ${schedule[idx]?.alag || ''}</div>
-        ${disp.note ? `<div style="font-size:0.9rem; opacity:0.75;">${disp.note}</div>` : ''}
-        ${note}
-      </div>`;
-    }).join('');
-    weekPanel.output.innerHTML = `<div class="week-results">${cards}</div>`;
-    weekPanel.output.querySelectorAll('.week-day-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const idx = Number(card.dataset.dayIndex || 0);
-        const src = data.week[idx];
-        const sched = schedule[idx];
-        currentPrevSched = schedule[idx - 1] || null;
-        applyDayToPanel(src, sched);
-        runDayPlan();
-        dagPanel.section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    });
+
+    weekPanel.output.innerHTML = `
+      <div class="week-result-note">Vikuplan tilbúið.</div>
+    `;
+
+    renderWeekCards();
   }
 
   function applyDayToPanel(dayData, sched) {
@@ -990,21 +955,10 @@ function updateAllResidualsFromWeek() {
   }
 
   function renderWeekFallback(schedule = [], errorText = '') {
-    const cards = schedule.map((day, idx) => {
-      const title = day?.dagur || dayNames[idx] || `Dagur ${idx + 1}`;
-      const dagskra = day?.dagskra || '—';
-      const alag = day?.alag || '—';
-      const dayKey = normDayKey(title);
-      return `<div class="week-day week-day-card" data-day="${dayKey}" data-day-index="${idx}">
-        <div><strong>${title}</strong></div>
-        <div style="font-size:0.95rem;">Dagskrá: ${dagskra}</div>
-        <div style="font-size:0.95rem;">Álag: ${alag}</div>
-        <div style="font-size:0.9rem; opacity:0.8;">Smelltu til að sjá dagspjald.</div>
-      </div>`;
-    }).join('');
-    const msg = errorText ? `<div style="margin-bottom:8px;color:#f6d6a2;">${errorText}</div>` : '';
-    weekPanel.output.innerHTML = `${msg}<div class="week-results">${cards}</div>`;
-     renderWeekCards();
+    weekPanel.output.innerHTML = errorText
+      ? `<div class="week-error">${errorText}</div>`
+      : '';
+    renderWeekCards();
   }
 
   function getRecommendationForDay(dayKey) {
