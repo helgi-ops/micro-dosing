@@ -219,6 +219,37 @@ window.updateLastPowerFromWeekSelections =
 window.updateLastPlyoFromWeekSelections =
   window.updateLastPlyoFromWeekSelections || function () {};
 
+  function populateWeekGrid() {
+    const grid = document.getElementById('microdose-week-grid');
+    if (!grid) return;
+
+    const labels = ['Mán','Þri','Mið','Fim','Fös','Lau','Sun'];
+    const keys = ['man','tri','mid','fim','fos','lau','sun'];
+
+    grid.innerHTML = keys.map((k, i) => `
+      <div class="week-day-select">
+        <div class="week-day-label">${labels[i]}</div>
+        <label>Dagskrá
+          <select id="week-plan-${i}-schedule">
+            <option value="">—</option>
+            <option value="practice">Æfing</option>
+            <option value="game">Leikur</option>
+            <option value="skill_session">Tækni</option>
+            <option value="off">Frí</option>
+          </select>
+        </label>
+        <label>Álag
+          <select id="week-plan-${i}-load">
+            <option value="">—</option>
+            <option value="Lágt">Lágt</option>
+            <option value="Miðlungs">Miðlungs</option>
+            <option value="Hátt">Hátt</option>
+          </select>
+        </label>
+      </div>
+    `).join('');
+  }
+
   const dagPanel = {
     section: document.getElementById('microdose-section'),
     btn: document.getElementById('microdose-run'),
@@ -1174,6 +1205,9 @@ function updateAllResidualsFromWeek() {
   autofillResidualInputs();
   applyExposurePrefill();
   tryAutoLoadLastWeek();
+  if (typeof populateWeekGrid === 'function') {
+    populateWeekGrid();
+  }
   renderWeekCards();
   dagPanel.btn?.addEventListener('click', runDayPlan);
   weekPanel.run?.addEventListener('click', runWeekPlan);
