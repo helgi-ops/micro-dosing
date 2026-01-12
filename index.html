@@ -564,11 +564,19 @@
           <p class="eyebrow" style="margin-bottom:8px;">Viku/dagaval (Mán–Sun)</p>
           <div class="week-days-grid week-grid" id="microdose-week-grid"></div>
         </div>
-        <div id="microdose-week-output" class="microdose-output">
-          <div id="weekResult">
-            <div class="empty-state">Búðu til vikuplan til að sjá kort hér.</div>
-          </div>
-        </div>
+      <div id="microdose-week-output" class="microdose-output">
+  <div class="empty-state" id="weekEmpty">Búðu til vikuplan til að sjá kort hér.</div>
+
+  <!-- Heildarvikan (Mán–Sun) -->
+  <div id="weekCards" class="week-days-grid"></div>
+
+  <!-- Niðurstaða / texti / fallback fer HÉR (má yfirskrifa) -->
+  <div id="weekResult"></div>
+</div>
+
+
+
+</div>
         <div id="dayPanel" class="panel-card microdose-panel panel day-panel">
           <div class="panel-header">
             <div>
@@ -3890,21 +3898,29 @@
     }
 
     function refreshLoadSelect() {
-      if (!loadSelect) {
-        console.warn('[microdose] refreshLoadSelect: loadSelect fannst ekki');
-        return;
-      }
-      const map = readSavedPrograms();
-      const current = loadSelect.value;
-      loadSelect.innerHTML = '<option value=\"\">— Hlaða vistuðu —</option>';
-      Object.keys(map).sort().forEach(name => {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        if (name === current) opt.selected = true;
-        loadSelect.appendChild(opt);
-      });
-    }
+  const loadSelect =
+    document.getElementById('loadProgram') ||
+    document.getElementById('program-load') ||
+    document.querySelector('[data-role="loadProgram"]');
+
+  if (!loadSelect) {
+    console.warn('[microdose] refreshLoadSelect: loadSelect missing');
+    return;
+  }
+
+  const map = readSavedPrograms();
+  const current = loadSelect.value;
+
+  loadSelect.innerHTML = '<option value="">— Hlaða prógrammi —</option>';
+
+  Object.keys(map).sort().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    if (name === current) opt.selected = true;
+    loadSelect.appendChild(opt);
+  });
+}
 
     function saveCurrentProgram() {
       const name = (saveNameInput.value || '').trim();

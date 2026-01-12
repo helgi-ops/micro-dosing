@@ -899,8 +899,8 @@ function updateAllResidualsFromWeek() {
   function renderWeekResult(data, schedule) {
     if (!data || data.status !== 'ok' || !Array.isArray(data.week)) {
       weekPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
-      return;
       renderWeekCards();
+      return;
     }
     weekPanel.status.textContent = `Vika: ${data.week_start || '—'} (smelltu á dag til að sjá æfingu)`;
     weekPanel.status.style.display = 'inline-block';
@@ -929,6 +929,7 @@ function updateAllResidualsFromWeek() {
         dagPanel.section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
+    renderWeekCards();
   }
 
   function applyDayToPanel(dayData, sched) {
@@ -955,6 +956,7 @@ function updateAllResidualsFromWeek() {
     }).join('');
     const msg = errorText ? `<div style="margin-bottom:8px;color:#f6d6a2;">${errorText}</div>` : '';
     weekPanel.output.innerHTML = `${msg}<div class="week-results">${cards}</div>`;
+    renderWeekCards();
   }
 
   function getRecommendationForDay(dayKey) {
