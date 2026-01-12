@@ -233,7 +233,7 @@ window.updateLastPlyoFromWeekSelections =
   const weekPanel = {
     grid: document.getElementById('microdose-week-grid'),
     run: document.getElementById('microdose-week-run'),
-    output: document.getElementById('microdose-week-output'),
+    output: document.getElementById('weekResult') || document.getElementById('microdose-week-output'),
     status: document.getElementById('microdose-week-status'),
     resStrength: document.getElementById('residual-strength'),
     resPower: document.getElementById('residual-power'),
@@ -3968,4 +3968,3 @@ if (empty) empty.style.display = hasAny ? 'none' : 'block';
     `;
   }).join('');
 }
-
