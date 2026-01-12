@@ -233,7 +233,7 @@ window.updateLastPlyoFromWeekSelections =
   const weekPanel = {
     grid: document.getElementById('microdose-week-grid'),
     run: document.getElementById('microdose-week-run'),
-    output: document.getElementById('weekResult') || document.getElementById('microdose-week-output'),
+    output: document.getElementById('microdose-week-output'),
     status: document.getElementById('microdose-week-status'),
     resStrength: document.getElementById('residual-strength'),
     resPower: document.getElementById('residual-power'),
@@ -890,17 +890,35 @@ function updateAllResidualsFromWeek() {
       renderWeekResult(data, schedule);
     } catch (err) {
       renderWeekFallback(schedule, err?.message || '');
+
     } finally {
       weekPanel.run.disabled = false;
       weekPanel.run.textContent = 'Búa til vikuplan';
     }
   }
 
-  function renderWeekResult(data, schedule) {
-    if (!data || data.status !== 'ok' || !Array.isArray(data.week)) {
-      weekPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
-      renderWeekCards();
-      return;
+ function renderWeekResult(data, schedule) {
+  if (!data || data.status !== 'ok' || !Array.isArray(data.week)) {
+    weekPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
+    renderWeekCards(); // vikan má ALDREI hverfa
+    return;
+  }
+
+  weekPanel.status.textContent =
+    `Vika: ${data.week_start || ''}`;
+
+  weekPanel.status.style.display = 'inline-block';
+
+  // 🔹 Bara texti / skilaboð fara hingað
+  weekPanel.output.innerHTML = `
+    <div class="week-result-note">
+      Vikuplan tilbúið.
+    </div>
+  `;
+
+  // 🔹 Kortin renderuð ALLTAF sér
+  renderWeekCards();
+}
     }
     weekPanel.status.textContent = `Vika: ${data.week_start || '—'} (smelltu á dag til að sjá æfingu)`;
     weekPanel.status.style.display = 'inline-block';
@@ -929,7 +947,6 @@ function updateAllResidualsFromWeek() {
         dagPanel.section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
-    renderWeekCards();
   }
 
   function applyDayToPanel(dayData, sched) {
@@ -956,7 +973,7 @@ function updateAllResidualsFromWeek() {
     }).join('');
     const msg = errorText ? `<div style="margin-bottom:8px;color:#f6d6a2;">${errorText}</div>` : '';
     weekPanel.output.innerHTML = `${msg}<div class="week-results">${cards}</div>`;
-    renderWeekCards();
+     renderWeekCards();
   }
 
   function getRecommendationForDay(dayKey) {
@@ -3970,3 +3987,4 @@ if (empty) empty.style.display = hasAny ? 'none' : 'block';
     `;
   }).join('');
 }
+
