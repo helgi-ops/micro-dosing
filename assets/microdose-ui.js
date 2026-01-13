@@ -4144,6 +4144,11 @@ function renderWeekCards(resultOverride, scheduleOverride) {
   const root = document.getElementById('weekCards');
   const empty = document.getElementById('weekEmpty');
   if (!root) return;
+  // Force 4+3 grid layout to match day selector
+  root.style.display = 'grid';
+  root.style.gridTemplateColumns = 'repeat(4, minmax(0, 1fr))';
+  root.style.gap = '14px';
+  root.style.width = '100%';
 
   let schedule = [];
   try {
