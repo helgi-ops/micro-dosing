@@ -942,8 +942,6 @@ function updateAllResidualsFromWeek() {
       renderWeekCards();
       return;
     }
-    lastWeekResult = Array.isArray(data.week) ? data.week : null;
-
     if (weekPanel.status) {
       weekPanel.status.textContent = `Vika: ${data.week_start || ''}`;
       weekPanel.status.style.display = 'inline-block';
@@ -968,7 +966,6 @@ function updateAllResidualsFromWeek() {
   }
 
   function renderWeekFallback(schedule = [], errorText = '') {
-    lastWeekResult = null;
     if (weekPanel.output) {
       weekPanel.output.innerHTML = errorText
         ? `<div class="week-error">${errorText}</div>`
@@ -3981,34 +3978,10 @@ function renderWeekCards(scheduleOverride) {
   const keys = ['man','tri','mid','fim','fos','lau','sun'];
   const labels = ['Mán','Þri','Mið','Fim','Fös','Lau','Sun'];
 
-  const displayWeek = Array.isArray(lastWeekResult) && lastWeekResult.length ? lastWeekResult : null;
-  const hasAny = displayWeek
-    ? true
-    : schedule.some(d => d && ((d.dagskra && d.dagskra !== '-') || (d.alag && d.alag !== '-')));
+  const hasAny = schedule.some(d => d && ((d.dagskra && d.dagskra !== '-') || (d.alag && d.alag !== '-')));
   if (empty) empty.style.display = hasAny ? 'none' : 'block';
 
   root.innerHTML = keys.map((k, i) => {
-    if (displayWeek) {
-      const day = displayWeek[i] || {};
-      const sched = schedule[i] || {};
-      const traffic = (day.traffic || '').toLowerCase();
-      const trafficTag = traffic === 'grænt' ? 'graent' : traffic === 'rautt' ? 'rautt' : 'gult';
-      const template = day.stefna || day.template || '—';
-      const time = day.minutur ? ` · ${day.minutur}` : '';
-      const note = day.residual_note || day.note || '';
-      return `
-        <button type="button" class="week-day-card" data-day="${k}">
-          <div style="display:flex;gap:6px;align-items:center;font-weight:700">
-            <span>${labels[i]}</span>
-            <span class="tag traffic-${trafficTag}">${day.traffic || ''}</span>
-          </div>
-          <div style="font-weight:600;margin-top:4px;">${template}${time}</div>
-          <div style="opacity:.85;font-size:13px;">Dagskrá: ${sched.dagskra || '–'} · Álag: ${sched.alag || '–'}</div>
-          ${note ? `<div style="opacity:.8;font-size:12px;margin-top:4px;">${note}</div>` : ''}
-        </button>
-      `;
-    }
-
     const d = schedule[i] || {};
     const dagskra = d.dagskra ?? d.schedule ?? d.type ?? '–';
     const alag = d.alag ?? d.load ?? '–';
