@@ -827,7 +827,7 @@ function updateAllResidualsFromWeek() {
       // If we already have a full plan from the generated Vikuplan, use it directly.
       if (weekDay) {
         const enriched = { ...weekDay, status: weekDay.status || 'ok', dagur: weekDay.dagur || dayLabel };
-        renderDayResult(enriched, sched || {}, dayLabel);
+        renderDayResult(enriched, sched || {}, dayLabel, schedule, dayIdx);
         return;
       }
       const focusVal = fmt(dagPanel.focus?.value || (sched ? `${sched.dagskra || ''} + ${sched.alag || ''}` : 'Hraði + styrkur'));
@@ -846,7 +846,7 @@ function updateAllResidualsFromWeek() {
       });
       if (!res.ok) throw new Error(`Villa frá netlify (${res.status})`);
       const data = await res.json();
-      renderDayResult(data, sched || {}, dayLabel);
+      renderDayResult(data, sched || {}, dayLabel, schedule, dayIdx);
     } catch (err) {
       dagPanel.output.innerHTML = `<strong>Villa:</strong> ${err.message || err}`;
     } finally {
@@ -855,7 +855,7 @@ function updateAllResidualsFromWeek() {
     }
   }
 
-  function renderDayResult(data, sched = {}, dayLabel = '') {
+  function renderDayResult(data, sched = {}, dayLabel = '', schedule = [], dayIdx = 0) {
     if (!data || data.status !== 'ok') {
       dagPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
       return;
@@ -865,31 +865,47 @@ function updateAllResidualsFromWeek() {
       dagPanel.status.textContent = `Ljósakerfi: ${data.traffic?.toUpperCase() || ''} – ${disp.plan}`;
       dagPanel.status.style.display = 'inline-block';
     }
-    const blocks = [
-        `<strong>Dagur:</strong> ${data.dagur || sched.dagur || dayLabel || '—'}`,
-        `<strong>Fókus:</strong> ${data.focus || dagPanel.focus?.value || '—'}`,
-        `<strong>Áætlun:</strong> ${(disp.template || data.stefna || data.template || '—')} (${disp.plan || data.plan || '—'})`,
-        `<strong>Tímamörk:</strong> ${disp.time || data.minutur || data.time || data.lota || '—'}`,
-        `<strong>Ráðlögð lota:</strong> ${data.lota || data.lota_text || '—'}`,
-        `<strong>Rúmmál:</strong> ${data.volume || data.rummal || '—'}`,
-        `<strong>Sett:</strong> ${Array.isArray(data.sett) ? data.sett.join(' · ') : (data.sett || '—')}`,
-        `<strong>Stoð:</strong> ${Array.isArray(data.stod) ? data.stod.join(' · ') : (data.stod || '—')}`,
-        `<strong>Dagskrá:</strong> ${data.dagskra || sched.dagskra || '—'}`,
-        `<strong>Álag:</strong> ${data.alag || sched.alag || '—'}`,
-        `<strong>Exposure:</strong> ${getExposureValue()}`
-      ];
-    if (disp.exposureNote) blocks.push(`<strong>Exposure ath.:</strong> ${disp.exposureNote}`);
-    if (disp.note) blocks.push(`<strong>Ath:</strong> ${disp.note}`);
-    if (data.instructions) {
-      const inst = Array.isArray(data.instructions) ? data.instructions.join('<br>') : data.instructions;
-      blocks.push(`<strong>Leiðbeiningar:</strong> ${inst}`);
-    } else if (data.blocks) {
-      const bl = Array.isArray(data.blocks) ? data.blocks.map(b => (typeof b === 'string' ? b : JSON.stringify(b))).join('<br>') : JSON.stringify(data.blocks);
-      blocks.push(`<strong>Leiðbeiningar:</strong> ${bl}`);
-    } else if (!data.volume && !data.sett && !data.stod) {
-      blocks.push('<em>Engar ítarlegar leiðbeiningar skiluðust frá þjónustu.</em>');
-    }
-      dagPanel.output.innerHTML = blocks.map(p => `<div>${p}</div>`).join('');
+    const prevSched = dayIdx > 0 && Array.isArray(schedule) ? schedule[dayIdx - 1] : null;
+    const tpl = getSessionTemplate(
+      { ...data, ...sched, dagur: data.dagur || sched.dagur || dayLabel, focus: data.focus || sched.focus },
+      { exposure: getExposureValue(), md1: isMDPlus1(prevSched) || ((prevSched?.type || '').toLowerCase() === 'game') }
+    );
+
+    const infoBlocks = [
+      `<strong>Dagur:</strong> ${data.dagur || sched.dagur || dayLabel || '—'}`,
+      `<strong>Fókus:</strong> ${data.focus || dagPanel.focus?.value || '—'}`,
+      `<strong>Áætlun:</strong> ${(disp.template || data.stefna || data.template || '—')} (${disp.plan || data.plan || '—'})`,
+      `<strong>Tímamörk:</strong> ${disp.time || data.minutur || data.time || data.lota || (tpl.totalMinutes ? `${tpl.totalMinutes} mín` : '—')}`,
+      `<strong>Dagskrá:</strong> ${data.dagskra || sched.dagskra || '—'}`,
+      `<strong>Álag:</strong> ${data.alag || sched.alag || '—'}`,
+      `<strong>Exposure:</strong> ${getExposureValue()}`
+    ];
+    if (disp.exposureNote) infoBlocks.push(`<strong>Exposure ath.:</strong> ${disp.exposureNote}`);
+    if (disp.note) infoBlocks.push(`<strong>Ath:</strong> ${disp.note}`);
+
+    const sessionHtml = tpl && tpl.blocks && tpl.blocks.length
+      ? tpl.blocks.map(block => `
+          <div class="session-block">
+            <div class="session-block-head">
+              <span>${block.title}</span>
+              ${block.minutes ? `<span>${block.minutes} mín</span>` : ''}
+            </div>
+            <ul class="session-items">
+              ${(block.items || []).map(item => `<li><strong>${item.name}:</strong> ${item.prescription || ''}</li>`).join('')}
+            </ul>
+          </div>
+        `).join('')
+      : '<div class="session-block">No session template found for this day type.</div>';
+
+    const notesHtml = tpl.notes && tpl.notes.length
+      ? `<div class="session-notes">${tpl.notes.map(n => `<div>${n}</div>`).join('')}</div>`
+      : '';
+
+    dagPanel.output.innerHTML = `
+      <div class="session-summary">${infoBlocks.map(p => `<div>${p}</div>`).join('')}</div>
+      ${sessionHtml}
+      ${notesHtml}
+    `;
     currentPrevSched = null;
   }
 
@@ -1054,6 +1070,139 @@ function updateAllResidualsFromWeek() {
     const val = weekPanel.exposureSelect?.value || 'low';
     if (val === 'high' || val === 'moderate') return val;
     return 'low';
+  }
+
+  /* ---------- Session templates for each day ---------- */
+  const EX = {
+    mobility: [
+      { name: '90/90 Hip + Reach', prescription: '2x5/side' },
+      { name: 'World’s Greatest', prescription: '2x4/side' }
+    ],
+    primer: [
+      { name: 'A-skips / dribbles', prescription: '2x15–20m' },
+      { name: 'Skating hop', prescription: '2x5/side' },
+      { name: 'Pogos', prescription: '2x12' }
+    ],
+    plyo: [
+      { name: 'Hurdle hop', prescription: '3x4' },
+      { name: 'Medball chest pass', prescription: '3x6' }
+    ],
+    power: [
+      { name: 'Bound or split jump', prescription: '3x5/side' },
+      { name: 'MB scoop toss', prescription: '3x6' }
+    ],
+    strengthLower: [
+      { name: 'RDL', prescription: '3x6 @ 7RPE' },
+      { name: 'Split squat / lunge', prescription: '3x6/side' }
+    ],
+    strengthUpper: [
+      { name: 'DB Bench / Push-up', prescription: '3x8' },
+      { name: 'Row / Pull', prescription: '3x10' }
+    ],
+    iso: [
+      { name: 'Copenhagen / Adductor plank', prescription: '2–3x20–30s/side' },
+      { name: 'Hamstring iso (Nordic / Hinge iso)', prescription: '2–3x5–8s' }
+    ],
+    trunk: [
+      { name: 'Pallof / anti-rotation', prescription: '3x10/side' },
+      { name: 'Dead bug or plank', prescription: '3x30s' }
+    ],
+    recovery: [
+      { name: 'Easy bike / walk', prescription: '6–10 mín' },
+      { name: 'Breath reset', prescription: '2x8 djúpar' }
+    ]
+  };
+
+  function pick(list, count = 1) {
+    if (!Array.isArray(list) || list.length === 0) return [];
+    return list.slice(0, Math.max(0, count));
+  }
+
+  function getDayCategory(day = {}, context = {}) {
+    const src = `${day.stefna || ''} ${day.plan || ''} ${day.template || ''} ${day.type || ''} ${day.focus || ''}`.toLowerCase();
+    if (context.md1) return 'primer';
+    if (src.includes('primer') || src.includes('rautt')) return 'primer';
+    if (src.includes('recovery') || src.includes('off') || (day.dagskra || '').toLowerCase() === 'frí') return 'recovery';
+    if (src.includes('anchor')) return 'anchor';
+    if (src.includes('maint')) return 'maintenance';
+    if (src.includes('power')) return 'power';
+    if (src.includes('styrk') || src.includes('strength')) return 'strength';
+    return 'maintenance';
+  }
+
+  function getSessionTemplate(day = {}, context = {}) {
+    const notes = [];
+    const exposure = context.exposure || 'low';
+    const category = getDayCategory(day, context);
+
+    if (context.md1) notes.push('MD+1: minnka álag, notaðu Primer hugmynd.');
+    if (exposure === 'high') notes.push('High exposure: haltu magni lágu.');
+
+    const blocksByCat = {
+      primer: () => ({
+        totalMinutes: 8,
+        blocks: [
+          { title: 'Hreyfigeta + öndun', minutes: 3, items: pick(EX.mobility, 2) },
+          { title: 'Taugavirkjun', minutes: 3, items: pick(EX.primer, 2) },
+          { title: 'Létt plyo / lok', minutes: 2, items: pick(EX.plyo, 1) }
+        ]
+      }),
+      maintenance: () => ({
+        totalMinutes: 14,
+        blocks: [
+          { title: 'Priming / plyo', minutes: 4, items: pick(EX.primer, 2) },
+          { title: 'Viðhald styrkur', minutes: 6, items: pick(EX.strengthLower, 1).concat(pick(EX.strengthUpper, 1)) },
+          { title: 'Iso + kjarni', minutes: 4, items: pick(EX.iso, 1).concat(pick(EX.trunk, 1)) }
+        ]
+      }),
+      anchor: () => ({
+        totalMinutes: 22,
+        blocks: [
+          { title: 'Aðal blokk', minutes: 10, items: pick(EX.strengthLower, 1).concat(pick(EX.power, 1)) },
+          { title: 'Álag + viðhald', minutes: 7, items: pick(EX.strengthUpper, 1).concat(pick(EX.iso, 1)) },
+          { title: 'Kjarni / lok', minutes: 5, items: pick(EX.trunk, 1) }
+        ]
+      }),
+      strength: () => ({
+        totalMinutes: 24,
+        blocks: [
+          { title: 'Taugavirkjun', minutes: 4, items: pick(EX.primer, 1).concat(pick(EX.plyo, 1)) },
+          { title: 'Styrkur A', minutes: 10, items: pick(EX.strengthLower, 1).concat(pick(EX.strengthUpper, 1)) },
+          { title: 'Styrkur B', minutes: 6, items: pick(EX.iso, 1).concat(pick(EX.trunk, 1)) },
+          { title: 'Lok', minutes: 4, items: pick(EX.trunk, 1) }
+        ]
+      }),
+      power: () => ({
+        totalMinutes: 18,
+        blocks: [
+          { title: 'Upphitun / footwork', minutes: 4, items: pick(EX.primer, 1) },
+          { title: 'Power / plyo', minutes: 7, items: pick(EX.power, 2) },
+          { title: 'Iso + kjarni', minutes: 5, items: pick(EX.iso, 1).concat(pick(EX.trunk, 1)) }
+        ]
+      }),
+      recovery: () => ({
+        totalMinutes: 8,
+        blocks: [
+          { title: 'Endurheimt', minutes: 5, items: pick(EX.recovery, 1) },
+          { title: 'Mobility', minutes: 3, items: pick(EX.mobility, 1) }
+        ]
+      })
+    };
+
+    const fn = blocksByCat[category];
+    if (!fn) {
+      return {
+        totalMinutes: 0,
+        blocks: [],
+        notes: ['No session template found for this day type.']
+      };
+    }
+    const tpl = fn();
+    return {
+      totalMinutes: tpl.totalMinutes,
+      blocks: tpl.blocks,
+      notes
+    };
   }
 
   function isMDPlus1(prevSched) {
@@ -4043,6 +4192,14 @@ function renderWeekCards(resultOverride, scheduleOverride) {
       const residualNote = day.residual_note || day.note;
       if (residualNote) noteParts.push(residualNote);
       if (!noteParts.length && trafficNotes[trafficTag]) noteParts.push(trafficNotes[trafficTag]);
+      const prevSched = i > 0 ? schedule[i - 1] : null;
+      const tpl = getSessionTemplate(
+        { ...day, dagskra: sched.dagskra, alag: sched.alag, focus: focus || sched.dagskra },
+        { exposure: getExposureValue(), md1: isMDPlus1(prevSched) || ((prevSched?.type || '').toLowerCase() === 'game') }
+      );
+      const blockTitles = Array.isArray(tpl.blocks) ? tpl.blocks.map(b => b.title) : [];
+      const previewTitles = blockTitles.slice(0, 3);
+      const extraCount = blockTitles.length > 3 ? blockTitles.length - 3 : 0;
       return `
         <button type="button" class="week-day-card week-card" data-day="${k}">
           <div style="display:flex;gap:6px;align-items:center;font-weight:700">
@@ -4056,6 +4213,8 @@ function renderWeekCards(resultOverride, scheduleOverride) {
           ${sett ? `<div style="opacity:.9;font-size:13px;">Sett: ${sett}</div>` : ''}
           ${stod ? `<div style="opacity:.9;font-size:13px;">Stoð: ${stod}</div>` : ''}
           <div style="opacity:.85;font-size:13px;">Dagskrá: ${sched.dagskra || '–'} · Álag: ${sched.alag || '–'}</div>
+          ${tpl && tpl.totalMinutes ? `<div class="week-card-preview"><strong>Total:</strong> ${tpl.totalMinutes} mín</div>` : ''}
+          ${previewTitles.length ? `<ul class="week-card-preview">${previewTitles.map(t => `<li>${t}</li>`).join('')}${extraCount ? `<li>+${extraCount} blokk${extraCount>1?'ir':''}</li>` : ''}</ul>` : ''}
           ${noteParts.length ? `<div style="opacity:.8;font-size:12px;margin-top:4px;">${noteParts.join(' ')}</div>` : ''}
         </button>
       `;

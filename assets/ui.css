@@ -331,6 +331,52 @@ select:focus, input:focus, textarea:focus{
 .traffic-gult{ background: linear-gradient(180deg, #d9a441, #b57d13); }
 .traffic-graent{ background: linear-gradient(180deg, #31b26d, #1e7f4b); }
 
+/* Session template display */
+.week-card-preview{
+  font-size: 13px;
+  opacity: .9;
+  margin-top: 4px;
+  padding-left: 0;
+  list-style: disc;
+}
+.week-card-preview li{
+  margin-left: 16px;
+  line-height: 1.2;
+}
+.session-summary{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 6px 12px;
+  margin-bottom: 10px;
+}
+.session-block{
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  margin-bottom: 8px;
+}
+.session-block-head{
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 14px;
+}
+.session-items{
+  margin: 6px 0 0;
+  padding-left: 16px;
+  font-size: 13px;
+  opacity: .92;
+}
+.session-items li{
+  margin: 2px 0;
+}
+.session-notes{
+  margin-top: 6px;
+  font-size: 13px;
+  opacity: .9;
+}
+
 /* Card styling (day tiles) */
 .card{
   border-radius: var(--r-lg);
