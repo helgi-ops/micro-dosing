@@ -113,3 +113,9 @@ supabase.auth.onAuthStateChange(async () => {
 const host = document.getElementById("rosterHooks");
 ensureAuthUI(host);
 if (host) loadTeams();
+
+// Expose helper so other modules (roster-supabase) can remount after DOM changes
+window.renderAuthBox = function(target){
+  ensureAuthUI(target);
+  loadTeams();
+};

@@ -28,6 +28,7 @@ function ensureRosterUI() {
 
   // Clear + rebuild (þannig þetta virkar alltaf eftir route/view skipti)
   host.innerHTML = `
+    <div id="authBoxMount"></div>
     <div id="${IDS.status}" style="margin:10px 0; opacity:.85;"></div>
 
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0;">
@@ -42,6 +43,11 @@ function ensureRosterUI() {
 
     <div id="${IDS.list}" style="display:grid; gap:8px;"></div>
   `;
+
+  // Render auth UI inside roster panel if helper is exposed
+  if (window.renderAuthBox) {
+    window.renderAuthBox(host);
+  }
 }
 
 function renderPlayers(players) {
