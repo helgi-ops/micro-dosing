@@ -822,9 +822,10 @@ function updateAllResidualsFromWeek() {
       const schedule = readWeekScheduleFromUI();
       const dayIdx = dayIndexFromKey(dagPanel.focusDaySelect?.value || dagPanel.dagur?.value || 'Mán');
       const sched = Array.isArray(schedule) ? schedule[dayIdx] : null;
+      const dayLabel = (sched && sched.dagur) ? sched.dagur : (dayNames[dayIdx] || 'Mán');
       const focusVal = fmt(dagPanel.focus?.value || (sched ? `${sched.dagskra || ''} + ${sched.alag || ''}` : 'Hraði + styrkur'));
       const payload = {
-        dagur: fmt(dagPanel.dagur?.value || 'Mán'),
+        dagur: fmt(dagPanel.dagur?.value || dayLabel),
         readiness: Number(dagPanel.readiness?.value || 7),
         focus: focusVal,
         dagskra: sched?.dagskra || '',
@@ -838,7 +839,7 @@ function updateAllResidualsFromWeek() {
       });
       if (!res.ok) throw new Error(`Villa frá netlify (${res.status})`);
       const data = await res.json();
-      renderDayResult(data, sched || {});
+      renderDayResult(data, sched || {}, dayLabel);
     } catch (err) {
       dagPanel.output.innerHTML = `<strong>Villa:</strong> ${err.message || err}`;
     } finally {
@@ -847,25 +848,25 @@ function updateAllResidualsFromWeek() {
     }
   }
 
-  function renderDayResult(data, sched = {}) {
+  function renderDayResult(data, sched = {}, dayLabel = '') {
     if (!data || data.status !== 'ok') {
       dagPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
       return;
     }
-    const disp = mapDisplayPlan(data, null, currentPrevSched, getExposureValue());
+    const disp = mapDisplayPlan(data, sched, currentPrevSched, getExposureValue());
     if (dagPanel.status) {
       dagPanel.status.textContent = `Ljósakerfi: ${data.traffic?.toUpperCase() || ''} – ${disp.plan}`;
       dagPanel.status.style.display = 'inline-block';
     }
-      const blocks = [
-        `<strong>Dagur:</strong> ${data.dagur}`,
-        `<strong>Fókus:</strong> ${data.focus}`,
-        `<strong>Áætlun:</strong> ${disp.template || data.stefna} (${disp.plan})`,
-        `<strong>Tímamörk:</strong> ${disp.time || data.lota || '—'}`,
-        `<strong>Ráðlögð lota:</strong> ${data.lota}`,
-        `<strong>Rúmmál:</strong> ${data.volume}`,
-        `<strong>Sett:</strong> ${Array.isArray(data.sett) ? data.sett.join(' · ') : ''}`,
-        `<strong>Stoð:</strong> ${Array.isArray(data.stod) ? data.stod.join(' · ') : ''}`,
+    const blocks = [
+        `<strong>Dagur:</strong> ${data.dagur || sched.dagur || dayLabel || '—'}`,
+        `<strong>Fókus:</strong> ${data.focus || dagPanel.focus?.value || '—'}`,
+        `<strong>Áætlun:</strong> ${(disp.template || data.stefna || data.template || '—')} (${disp.plan || data.plan || '—'})`,
+        `<strong>Tímamörk:</strong> ${disp.time || data.minutur || data.time || data.lota || '—'}`,
+        `<strong>Ráðlögð lota:</strong> ${data.lota || data.lota_text || '—'}`,
+        `<strong>Rúmmál:</strong> ${data.volume || data.rummal || '—'}`,
+        `<strong>Sett:</strong> ${Array.isArray(data.sett) ? data.sett.join(' · ') : (data.sett || '')}`,
+        `<strong>Stoð:</strong> ${Array.isArray(data.stod) ? data.stod.join(' · ') : (data.stod || '')}`,
         `<strong>Dagskrá:</strong> ${data.dagskra || sched.dagskra || ''}`,
         `<strong>Álag:</strong> ${data.alag || sched.alag || ''}`,
         `<strong>Exposure:</strong> ${getExposureValue()}`
