@@ -4547,26 +4547,40 @@ function renderWeekCards(resultOverride, scheduleOverride) {
   }
 
   function ensureState(){
-    if (!window.__microdoseState) {
-      window.__microdoseState = {
-        playerId: getPlayerId(),
-        selectedDayKey: 'man',
-        persist(){
-          try {
-            localStorage.setItem(storageKey(this.playerId), this.selectedDayKey);
-          } catch(e){}
-        },
-        load(){
-          try {
-            const v = localStorage.getItem(storageKey(this.playerId));
-            if (v) this.selectedDayKey = normDayKey(v);
-          } catch(e){}
-        }
-      };
-    }
-    window.__microdoseState.playerId = getPlayerId();
-    window.__microdoseState.load();
+  if (!window.__microdoseState) {
+    window.__microdoseState = {
+      playerId: getPlayerId(),
+      selectedDayKey: 'man',
+      persist(){
+        try {
+          localStorage.setItem(storageKey(this.playerId), this.selectedDayKey);
+        } catch(e){}
+      },
+      load(){
+        try {
+          const v = localStorage.getItem(storageKey(this.playerId));
+          if (v) this.selectedDayKey = normDayKey(v);
+        } catch(e){}
+      }
+    };
   }
+
+  const st = window.__microdoseState;
+  st.playerId = getPlayerId();
+
+  // ---- SHIMS: ef state kom úr öðrum hluta skrárinnar ----
+  // map: persistSelectedDay -> persist
+  if (typeof st.persist !== 'function' && typeof st.persistSelectedDay === 'function') {
+    st.persist = function(){ return st.persistSelectedDay(); };
+  }
+  // map: loadSelectedDay -> load
+  if (typeof st.load !== 'function' && typeof st.loadSelectedDay === 'function') {
+    st.load = function(){ return st.loadSelectedDay(); };
+  }
+
+  // Safe call
+  if (typeof st.load === 'function') st.load();
+}
 
   function highlight(dayKey){
     const root = document.getElementById('weekCards') || document.getElementById('weekPlan');

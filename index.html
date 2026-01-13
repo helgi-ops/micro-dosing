@@ -4584,24 +4584,40 @@
     refreshLoadSelect();
     updateProgramSections();
 
-    const playerSelectEl = document.getElementById('playerSelect');
-    const athleteNameInput = document.getElementById('athleteName');
-    if (playerSelectEl && athleteNameInput) {
-      playerSelectEl.addEventListener('change', () => {
-        if (playerSelectEl.value && playerSelectEl.value !== 'Custom') {
-          athleteNameInput.value = playerSelectEl.value;
-        }
-        athleteNameInput.dispatchEvent(new Event('change'));
-      });
-      athleteNameInput.addEventListener('input', () => {
-        if (playerSelectEl.value && playerSelectEl.value !== athleteNameInput.value) {
-          playerSelectEl.value = '';
-        }
-      });
-    }
+  const playerSelectEl = document.getElementById('playerSelect');
+  const athleteNameInput = document.getElementById('athleteName');
+  if (playerSelectEl && athleteNameInput) {
+    playerSelectEl.addEventListener('change', () => {
+      if (playerSelectEl.value && playerSelectEl.value !== 'Custom') {
+        athleteNameInput.value = playerSelectEl.value;
+      }
+      athleteNameInput.dispatchEvent(new Event('change'));
+    });
+    athleteNameInput.addEventListener('input', () => {
+      if (playerSelectEl.value && playerSelectEl.value !== athleteNameInput.value) {
+        playerSelectEl.value = '';
+      }
+    });
+  }
 
-  </script>
+  if (playerSelectEl) {
+    playerSelectEl.value = '';
+  }
+</script>
 
-  <script src="./assets/microdose-ui.js"></script>
+<!-- 1️⃣ Supabase config (VERÐUR að vera á undan JS) -->
+<script>
+  window.__SUPABASE_URL__ = "https://tbtkxttiwbdmugjivmvb.supabase.co";
+  window.__SUPABASE_ANON_KEY__ = "b0748c6f-0b22-4043-8078-8dfd5f13a053Y";
+</script>
+
+<!-- 2️⃣ Supabase client + API -->
+<script type="module" src="./assets/dataClient.js"></script>
+
+<!-- 3️⃣ Auth + Team selector -->
+<script type="module" src="./assets/app-auth.js"></script>
+
+<!-- 4️⃣ Microdose kerfið þitt -->
+<script src="./assets/microdose-ui.js"></script>
 </body>
 </html>
