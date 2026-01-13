@@ -5,7 +5,8 @@ function el(id) { return document.getElementById(id); }
 
 function ensureAuthUI(hostEl) {
   // Býr til lítið auth box ef það er ekki til
-  if (document.getElementById("authBox")) return;
+  const old = document.getElementById("authBox");
+if (old) old.remove();
 
   const host =
     hostEl ||
