@@ -4791,3 +4791,86 @@ function renderWeekCards(resultOverride, scheduleOverride) {
 
   document.addEventListener('DOMContentLoaded', init);
 })();
+/* =========================================================
+   Athlete Drawer — Default CLOSED + explicit open/close
+   Matches index.html: <aside class="athlete-drawer ..."> ... ✕ button
+   ========================================================= */
+
+(function athleteDrawerCodexPatch(){
+  const DRAWER_SEL = 'aside.athlete-drawer';
+  const OPEN_CLASS = 'is-open';
+  const CLOSED_CLASS = 'is-closed';
+
+  function qs(sel, root=document){ return root.querySelector(sel); }
+
+  function ensureStyle(){
+    if (document.getElementById('athleteDrawerPatchStyle')) return;
+    const s = document.createElement('style');
+    s.id = 'athleteDrawerPatchStyle';
+    s.textContent = `
+      ${DRAWER_SEL}.${CLOSED_CLASS}{ display:none !important; }
+      ${DRAWER_SEL}.${OPEN_CLASS}{ display:block; }
+    `;
+    document.head.appendChild(s);
+  }
+
+  function closeDrawer(drawer){
+    if (!drawer) return;
+    drawer.classList.remove(OPEN_CLASS);
+    drawer.classList.add(CLOSED_CLASS);
+    drawer.setAttribute('aria-hidden','true');
+  }
+
+  function openDrawer(drawer){
+    if (!drawer) return;
+    drawer.classList.remove(CLOSED_CLASS);
+    drawer.classList.add(OPEN_CLASS);
+    drawer.setAttribute('aria-hidden','false');
+  }
+
+  function init(){
+    ensureStyle();
+    const drawer = qs(DRAWER_SEL);
+    if (!drawer) return;
+
+    // 1) Default state: CLOSED on every page load
+    closeDrawer(drawer);
+
+    // 2) Close button (✕)
+    const closeBtn =
+      qs('.drawer-actions button', drawer) ||
+      Array.from(drawer.querySelectorAll('button')).find(b => (b.textContent||'').trim() === '✕');
+
+    if (closeBtn && !closeBtn.dataset.boundClose) {
+      closeBtn.dataset.boundClose = '1';
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeDrawer(drawer);
+      });
+    }
+
+    // 3) Explicit open hook:
+    // Add data-open-athlete-detail on any element (roster row / monitoring row) to open drawer.
+    document.addEventListener('click', (e) => {
+      const opener = e.target.closest?.('[data-open-athlete-detail]');
+      if (!opener) return;
+      e.preventDefault();
+      openDrawer(drawer);
+    });
+
+    // 4) Optional: ESC closes
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDrawer(drawer);
+    });
+
+    // 5) Optional: click outside closes (only when open)
+    document.addEventListener('click', (e) => {
+      if (!drawer.classList.contains(OPEN_CLASS)) return;
+      const clickedInside = drawer.contains(e.target);
+      const clickedOpener = e.target.closest?.('[data-open-athlete-detail]');
+      if (!clickedInside && !clickedOpener) closeDrawer(drawer);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
