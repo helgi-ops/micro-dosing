@@ -638,28 +638,6 @@ body{
 .stacked-bar .recov{ background: #cde4ff; }
 
 /* ---------- Spec panel ---------- */
-.spec-panel{
-  margin-top: 14px;
-}
-.spec-grid{
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
-}
-.spec-block{
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 12px;
-  padding: 12px 14px;
-  background: rgba(255,255,255,.04);
-}
-.spec-block h4{
-  margin: 0 0 6px;
-}
-.spec-block ul, .spec-block ol{
-  padding-left: 16px;
-  margin: 6px 0;
-}
 /* ---------- Coach sidebar (left nav) ---------- */
 .coach-sidebar{
   position: sticky;
