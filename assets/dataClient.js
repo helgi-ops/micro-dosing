@@ -14,7 +14,11 @@ export const api = {
   },
 
   async signInWithEmail(email) {
-    const { data, error } = await supabase.auth.signInWithOtp({ email });
+    const redirectTo = window.location.origin;
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo }
+    });
     if (error) throw error;
     return data;
   },
