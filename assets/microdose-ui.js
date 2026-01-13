@@ -977,6 +977,14 @@ function updateAllResidualsFromWeek() {
     if (weekPanel.output) {
       weekPanel.output.innerHTML = `
         <div class="week-result-note">Vikuplan tilbúið.</div>
+        <div class="week-defs">
+          <strong>Skilgreiningar:</strong>
+          <ul>
+            <li><strong>Primer:</strong> Endurheimt / neural primer, 6–10 mín – engin ný þjálfun.</li>
+            <li><strong>Maintenance:</strong> Viðhald/snerting með lágu magni, oft isometric bias.</li>
+            <li><strong>Anchor:</strong> Aðal lota með háum gæðum (grænn dagur), forðast á gulum/rauðum.</li>
+          </ul>
+        </div>
       `;
     }
 
