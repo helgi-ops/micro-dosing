@@ -534,25 +534,6 @@
             </label>
           </div>
           <div class="hint">Residuals vistast per leikmann (localStorage).</div>
-          <div class="inline-actions">
-            <button type="button" id="microdose-week-run">Búa til vikuplan</button>
-            <button type="button" id="btnResetResiduals" style="background:#444;">Endurstilla residuals</button>
-            <span id="residualsStatus" class="hint"></span>
-          </div>
-          <div class="inline-actions">
-            <button type="button" id="btnLoadLastWeek" style="background:#2b6;">Hlaða síðustu viku</button>
-            <button type="button" id="btnClearLastWeek" style="background:#666;">Hreinsa síðustu viku</button>
-            <span id="lastWeekStatus" class="hint"></span>
-          </div>
-          <div class="inline-actions">
-            <button id="generateWeekBtn" type="button">Búa til vikuplan</button>
-            <button id="printWeekBtn" type="button">Prenta</button>
-            <button id="exportBtn" type="button">Export JSON</button>
-            <button id="importBtn" type="button">Import JSON</button>
-            <input id="importFile" type="file" accept="application/json" style="display:none;" />
-            <button id="clearStorageBtn" type="button">Hreinsa gögn</button>
-          </div>
-          <div id="ioStatus" class="status hint"></div>
         </div>
       </section>
       <section class="panel" id="resultsPanel">
@@ -569,6 +550,17 @@
           <button type="button" id="generateWeekBtn">Uppfæra vikuplan</button>
           <button type="button" id="btnResetResiduals" style="background:#444;">Hreinsa vikuplan</button>
           <span id="residualsStatus" class="hint"></span>
+        </div>
+        <div class="inline-actions" style="margin-bottom:10px;">
+          <button type="button" id="btnLoadLastWeek" style="background:#2b6;">Hlaða síðustu viku</button>
+          <button type="button" id="btnClearLastWeek" style="background:#666;">Hreinsa síðustu viku</button>
+          <span id="lastWeekStatus" class="hint"></span>
+          <button id="printWeekBtn" type="button">Prenta</button>
+          <button id="exportBtn" type="button">Export JSON</button>
+          <button id="importBtn" type="button">Import JSON</button>
+          <input id="importFile" type="file" accept="application/json" style="display:none;" />
+          <button id="clearStorageBtn" type="button">Hreinsa gögn</button>
+          <span id="ioStatus" class="status hint"></span>
         </div>
         <div id="microdose-week-output" class="microdose-output">
           <div class="empty-state" id="weekEmpty">
