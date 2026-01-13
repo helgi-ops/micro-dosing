@@ -965,9 +965,10 @@ function updateAllResidualsFromWeek() {
       if (weekPanel.output) {
         weekPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
       }
-      renderWeekCards();
+      renderWeekCards(null, schedule);
       return;
     }
+    lastWeekResult = Array.isArray(data.week) ? data.week : null;
     if (weekPanel.status) {
       weekPanel.status.textContent = `Vika: ${data.week_start || ''}`;
       weekPanel.status.style.display = 'inline-block';
@@ -992,12 +993,13 @@ function updateAllResidualsFromWeek() {
   }
 
   function renderWeekFallback(schedule = [], errorText = '') {
+    lastWeekResult = null;
     if (weekPanel.output) {
       weekPanel.output.innerHTML = errorText
         ? `<div class="week-error">${errorText}</div>`
         : '';
     }
-    renderWeekCards(lastWeekResult, schedule);
+    renderWeekCards(null, schedule);
   }
 
   function getRecommendationForDay(dayKey) {
