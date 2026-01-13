@@ -253,7 +253,7 @@ select:focus, input:focus, textarea:focus{
 .cards, #weekCards{
   display:grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 .week-days-grid{
   display:grid;
@@ -273,6 +273,30 @@ select:focus, input:focus, textarea:focus{
 }
 @media (max-width: 520px){
   .cards, #weekCards{ grid-template-columns: 1fr; }
+}
+
+/* Styling for generated Vikuplan cards */
+#weekCards .week-day-card{
+  width: 100%;
+  min-height: 170px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.18));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 10px 28px rgba(0,0,0,0.35);
+  padding: 14px 14px 12px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #f4f6fb;
+  cursor: pointer;
+}
+#weekCards .week-day-card:hover{
+  border-color: rgba(255,255,255,.2);
+  transform: translateY(-1px);
+  transition: all .15s ease;
 }
 
 /* Card styling (day tiles) */
