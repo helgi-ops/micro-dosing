@@ -4188,10 +4188,13 @@ function renderWeekCards(resultOverride, scheduleOverride) {
       const template = disp.template || day.stefna || day.template || '—';
       const time = (disp.time && disp.time !== '—') ? disp.time : (day.minutur || day.time || '');
       const lota = day.lota || '';
-      const volume = day.volume || '';
+      const volume = day.volume || day.rummal || '';
       const sett = Array.isArray(day.sett) ? day.sett.filter(Boolean).join(' · ') : (day.sett || '');
       const stod = Array.isArray(day.stod) ? day.stod.filter(Boolean).join(' · ') : (day.stod || '');
       const focus = day.focus || disp.plan || '';
+      const instructions = Array.isArray(day.instructions)
+        ? day.instructions.filter(Boolean).slice(0, 2).join(' · ')
+        : (day.instructions || '');
       const noteParts = [];
       if (disp.note) noteParts.push(disp.note);
       const residualNote = day.residual_note || day.note;
@@ -4217,6 +4220,7 @@ function renderWeekCards(resultOverride, scheduleOverride) {
           ${volume ? `<div style="opacity:.9;font-size:13px;">Ráðlögð lota: ${volume}</div>` : ''}
           ${sett ? `<div style="opacity:.9;font-size:13px;">Sett: ${sett}</div>` : ''}
           ${stod ? `<div style="opacity:.9;font-size:13px;">Stoð: ${stod}</div>` : ''}
+          ${instructions ? `<div style="opacity:.9;font-size:13px;">Leiðbeiningar: ${instructions}</div>` : ''}
           <div style="opacity:.85;font-size:13px;">Dagskrá: ${sched.dagskra || '–'} · Álag: ${sched.alag || '–'}</div>
           ${tpl && tpl.totalMinutes ? `<div class="week-card-preview"><strong>Total:</strong> ${tpl.totalMinutes} mín</div>` : ''}
           ${previewTitles.length ? `<ul class="week-card-preview">${previewTitles.map(t => `<li>${t}</li>`).join('')}${extraCount ? `<li>+${extraCount} blokk${extraCount>1?'ir':''}</li>` : ''}</ul>` : ''}
