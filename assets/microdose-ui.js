@@ -865,14 +865,23 @@ function updateAllResidualsFromWeek() {
         `<strong>Tímamörk:</strong> ${disp.time || data.minutur || data.time || data.lota || '—'}`,
         `<strong>Ráðlögð lota:</strong> ${data.lota || data.lota_text || '—'}`,
         `<strong>Rúmmál:</strong> ${data.volume || data.rummal || '—'}`,
-        `<strong>Sett:</strong> ${Array.isArray(data.sett) ? data.sett.join(' · ') : (data.sett || '')}`,
-        `<strong>Stoð:</strong> ${Array.isArray(data.stod) ? data.stod.join(' · ') : (data.stod || '')}`,
-        `<strong>Dagskrá:</strong> ${data.dagskra || sched.dagskra || ''}`,
-        `<strong>Álag:</strong> ${data.alag || sched.alag || ''}`,
+        `<strong>Sett:</strong> ${Array.isArray(data.sett) ? data.sett.join(' · ') : (data.sett || '—')}`,
+        `<strong>Stoð:</strong> ${Array.isArray(data.stod) ? data.stod.join(' · ') : (data.stod || '—')}`,
+        `<strong>Dagskrá:</strong> ${data.dagskra || sched.dagskra || '—'}`,
+        `<strong>Álag:</strong> ${data.alag || sched.alag || '—'}`,
         `<strong>Exposure:</strong> ${getExposureValue()}`
       ];
-      if (disp.exposureNote) blocks.push(`<strong>Exposure ath.:</strong> ${disp.exposureNote}`);
-      if (disp.note) blocks.push(`<strong>Ath:</strong> ${disp.note}`);
+    if (disp.exposureNote) blocks.push(`<strong>Exposure ath.:</strong> ${disp.exposureNote}`);
+    if (disp.note) blocks.push(`<strong>Ath:</strong> ${disp.note}`);
+    if (data.instructions) {
+      const inst = Array.isArray(data.instructions) ? data.instructions.join('<br>') : data.instructions;
+      blocks.push(`<strong>Leiðbeiningar:</strong> ${inst}`);
+    } else if (data.blocks) {
+      const bl = Array.isArray(data.blocks) ? data.blocks.map(b => (typeof b === 'string' ? b : JSON.stringify(b))).join('<br>') : JSON.stringify(data.blocks);
+      blocks.push(`<strong>Leiðbeiningar:</strong> ${bl}`);
+    } else if (!data.volume && !data.sett && !data.stod) {
+      blocks.push('<em>Engar ítarlegar leiðbeiningar skiluðust frá þjónustu.</em>');
+    }
       dagPanel.output.innerHTML = blocks.map(p => `<div>${p}</div>`).join('');
     currentPrevSched = null;
   }
@@ -1045,11 +1054,11 @@ function updateAllResidualsFromWeek() {
 
   function mapDisplayPlan(day, sched, prevSched, exposureOverride) {
     const traffic = (day.traffic || '').toLowerCase();
-    const originalPlan = day.stefna || '';
-    const originalTemplate = day.template || originalPlan;
-    let displayPlan = originalPlan;
-    let displayTemplate = originalTemplate;
-    let displayTime = day.minutur || '';
+    const originalPlan = day.stefna || day.plan || day.template || '';
+    const originalTemplate = day.template || originalPlan || '—';
+    let displayPlan = originalPlan || originalTemplate || '—';
+    let displayTemplate = originalTemplate || '—';
+    let displayTime = day.minutur || day.time || day.lota || '—';
     let displayNote = '';
     let exposureNote = '';
 
