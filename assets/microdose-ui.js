@@ -281,6 +281,38 @@ window.updateLastPlyoFromWeekSelections =
     exposureStatus: document.getElementById('exposureStatus')
   };
 
+  // Re-bind DOM element references (important if script loads before DOM is ready)
+  function bindDomRefs() {
+    // Day focus panel
+    dagPanel.section = document.getElementById('microdose-section');
+    dagPanel.btn = document.getElementById('microdose-run');
+    dagPanel.dagur = document.getElementById('microdose-dagur');
+    dagPanel.focusDaySelect = document.querySelector('#focusDaySelect') || document.getElementById('microdose-dagur');
+    dagPanel.readiness = document.getElementById('microdose-readiness');
+    dagPanel.focus = document.querySelector('#focusText') || document.getElementById('microdose-focus');
+    dagPanel.output = document.getElementById('microdose-output');
+    dagPanel.status = document.querySelector('#focusNote') || document.getElementById('microdose-status');
+
+    // Week panel
+    weekPanel.grid = document.getElementById('microdose-week-grid');
+    weekPanel.run = document.getElementById('microdose-week-run');
+    weekPanel.output = document.getElementById('weekResult') || document.getElementById('microdose-week-output');
+    weekPanel.status = document.getElementById('microdose-week-status') || document.getElementById('weekMeta');
+    weekPanel.resStrength = document.getElementById('residual-strength');
+    weekPanel.resPower = document.getElementById('residual-power');
+    weekPanel.resPlyo = document.getElementById('residual-plyo');
+    weekPanel.resetBtn = document.getElementById('btnResetResiduals');
+    weekPanel.residualStatus = document.getElementById('residualsStatus');
+    weekPanel.athlete = document.getElementById('athleteName');
+    weekPanel.athleteHint = document.getElementById('athleteStorageKeyHint');
+    weekPanel.loadLastWeekBtn = document.getElementById('btnLoadLastWeek');
+    weekPanel.clearLastWeekBtn = document.getElementById('btnClearLastWeek');
+    weekPanel.lastWeekStatus = document.getElementById('lastWeekStatus');
+    weekPanel.weekStartInput = document.getElementById('weekStartInput');
+    weekPanel.exposureSelect = document.getElementById('exposureSelect');
+    weekPanel.exposureStatus = document.getElementById('exposureStatus');
+  }
+
   const LS_RES_PREFIX = 'microdose_residuals_v1_';
   const LS_WEEK_PREFIX = 'microdose_lastweek_v1_';
   const LS_EXPOSURE_PREFIX = 'microdose_exposure_v1_';
@@ -1376,51 +1408,72 @@ function updateAllResidualsFromWeek() {
     saveExposureToStorage(val);
   }
 
-  ensureWeekCards();
-  updateAthleteHint();
-  autofillResidualInputs();
-  applyExposurePrefill();
-  tryAutoLoadLastWeek();
-  if (typeof populateWeekGrid === 'function') {
-    populateWeekGrid();
+  function initMicrodoseUI() {
+    // Prevent double-init
+    if (window.__microdoseUI_inited) return;
+    window.__microdoseUI_inited = true;
+
+    // Make sure DOM refs exist (script might load before DOM is ready)
+    bindDomRefs();
+
+    try {
+      ensureWeekCards();
+      updateAthleteHint();
+      autofillResidualInputs();
+      applyExposurePrefill();
+      tryAutoLoadLastWeek();
+      if (typeof populateWeekGrid === 'function') {
+        populateWeekGrid();
+      }
+      renderWeekCards();
+      dagPanel.btn?.addEventListener('click', runDayPlan);
+      weekPanel.run?.addEventListener('click', runWeekPlan);
+      weekPanel.resetBtn?.addEventListener('click', resetResiduals);
+      weekPanel.athlete?.addEventListener('change', handleAthleteChange);
+      weekPanel.athlete?.addEventListener('blur', handleAthleteChange);
+      weekPanel.loadLastWeekBtn?.addEventListener('click', handleLoadLastWeek);
+      weekPanel.clearLastWeekBtn?.addEventListener('click', handleClearLastWeek);
+      weekPanel.exposureSelect?.addEventListener('change', handleExposureChange);
+      weekPanel.exposureSelect?.addEventListener('blur', handleExposureChange);
+      weekPanel.weekStartInput?.addEventListener('input', markWeekTouched);
+      // Mark touches on selects
+      dayNames.forEach((_, idx) => {
+        document.getElementById(`week-plan-${idx}-schedule`)?.addEventListener('change', markWeekTouched);
+        document.getElementById(`week-plan-${idx}-load`)?.addEventListener('change', markWeekTouched);
+      });
+
+      // --- CLICK: Vikuplan -> Áherslur dags ---
+      (function wireWeekPlanClicks(){
+        const weekRoot =
+          weekPanel.grid ||
+          document.querySelector('.week-days-grid') ||
+          document.querySelector('[data-week-root]');
+
+        if (!weekRoot) return;
+
+        weekRoot.addEventListener('click', (e) => {
+          const card = e.target.closest('.week-day-card,[data-day]');
+          if (!card) return;
+
+          const dayKey = card.getAttribute('data-day');
+          if (!dayKey) return;
+
+          openDayInFocusPanel(dayKey);
+        });
+      })();
+    } catch (err) {
+      console.error('[microdose-ui] init failed:', err);
+      const statusEl = document.getElementById('microdose-week-status') || document.getElementById('microdose-status');
+      if (statusEl) statusEl.textContent = 'Villa í microdose UI (sjá Console): ' + (err?.message || err);
+    }
   }
-  renderWeekCards();
-  dagPanel.btn?.addEventListener('click', runDayPlan);
-  weekPanel.run?.addEventListener('click', runWeekPlan);
-  weekPanel.resetBtn?.addEventListener('click', resetResiduals);
-  weekPanel.athlete?.addEventListener('change', handleAthleteChange);
-  weekPanel.athlete?.addEventListener('blur', handleAthleteChange);
-  weekPanel.loadLastWeekBtn?.addEventListener('click', handleLoadLastWeek);
-  weekPanel.clearLastWeekBtn?.addEventListener('click', handleClearLastWeek);
-  weekPanel.exposureSelect?.addEventListener('change', handleExposureChange);
-  weekPanel.exposureSelect?.addEventListener('blur', handleExposureChange);
-  weekPanel.weekStartInput?.addEventListener('input', markWeekTouched);
-  // Mark touches on selects
-  dayNames.forEach((_, idx) => {
-    document.getElementById(`week-plan-${idx}-schedule`)?.addEventListener('change', markWeekTouched);
-    document.getElementById(`week-plan-${idx}-load`)?.addEventListener('change', markWeekTouched);
-  });
 
-  // --- CLICK: Vikuplan -> Áherslur dags ---
-  (function wireWeekPlanClicks(){
-    const weekRoot =
-      document.querySelector('#weekCards') ||
-      document.querySelector('#weekPlan') ||
-      document.querySelector('.week-days-grid') ||
-      document.querySelector('[data-week-root]');
-
-    if (!weekRoot) return;
-
-    weekRoot.addEventListener('click', (e) => {
-      const card = e.target.closest('.week-day-card,[data-day]');
-      if (!card) return;
-
-      const dayKey = card.getAttribute('data-day');
-      if (!dayKey) return;
-
-      openDayInFocusPanel(dayKey);
-    });
-  })();
+  // Init after DOM is ready (fixes "no buttons work" when script runs too early)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMicrodoseUI);
+  } else {
+    initMicrodoseUI();
+  }
 
   window.microdoseUI = { runDayPlan, runWeekPlan, applyDayToPanel };
 })();
@@ -4399,6 +4452,70 @@ function renderWeekCards(resultOverride, scheduleOverride) {
   }
 
   document.addEventListener('DOMContentLoaded', wire);
+})();
+
+// ---------- Player creation (local) ----------
+(function initPlayerCreate(){
+  const LS_KEY = 'microdose_players_v1';
+
+  function loadPlayers(){
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (_) { return []; }
+  }
+  function savePlayers(list){
+    try { localStorage.setItem(LS_KEY, JSON.stringify(list)); } catch (_) {}
+  }
+  function renderPlayers(list){
+    const sel = document.getElementById('playerSelect');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '';
+    const addOpt = (val, text) => {
+      const o = document.createElement('option');
+      o.value = val; o.textContent = text;
+      sel.appendChild(o);
+    };
+    addOpt('', 'Veldu leikmann');
+    list.forEach(name => addOpt(name, name));
+    addOpt('Custom', 'Skrá handvirkt');
+    if (current && list.includes(current)) sel.value = current;
+  }
+
+  function addPlayer(name){
+    const trimmed = (name || '').trim();
+    if (!trimmed) return;
+    const list = loadPlayers();
+    if (!list.includes(trimmed)) list.push(trimmed);
+    savePlayers(list);
+    renderPlayers(list);
+    const sel = document.getElementById('playerSelect');
+    const athleteName = document.getElementById('athleteName');
+    if (sel) {
+      sel.value = trimmed;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (athleteName && !athleteName.value) athleteName.value = trimmed;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const existingOpts = Array.from(document.querySelectorAll('#playerSelect option'))
+      .map(o => o.value).filter(v => v && v !== 'Custom');
+    const merged = Array.from(new Set([...loadPlayers(), ...existingOpts]));
+    savePlayers(merged);
+    renderPlayers(merged);
+
+    const btn = document.getElementById('addPlayerBtn');
+    const input = document.getElementById('newPlayerName');
+    if (btn && input) {
+      btn.addEventListener('click', () => addPlayer(input.value));
+      input.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') addPlayer(input.value);
+      });
+    }
+  });
 })();
 /* =========================================================
    MICRODOSE – SHARED STATE + DAY SELECTION WIRING
