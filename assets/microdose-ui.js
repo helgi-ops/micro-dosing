@@ -888,8 +888,12 @@ function updateAllResidualsFromWeek() {
     if (!weekPanel.run) return;
     weekPanel.run.disabled = true;
     weekPanel.run.textContent = 'Bý til...';
-    weekPanel.status.style.display = 'none';
-    weekPanel.output.textContent = '';
+    if (weekPanel.status) {
+      weekPanel.status.style.display = 'none';
+    }
+    if (weekPanel.output) {
+      weekPanel.output.textContent = '';
+    }
     const schedule = readWeekScheduleFromUI();
     // Always show the selected schedule immediately so user gets feedback, even offline
     renderWeekFallback(schedule, 'Bý til vikuplan...');
@@ -930,17 +934,23 @@ function updateAllResidualsFromWeek() {
 
   function renderWeekResult(data, schedule) {
     if (!data || data.status !== 'ok' || !Array.isArray(data.week)) {
-      weekPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
+      if (weekPanel.output) {
+        weekPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
+      }
       renderWeekCards();
       return;
     }
 
-    weekPanel.status.textContent = `Vika: ${data.week_start || ''}`;
-    weekPanel.status.style.display = 'inline-block';
+    if (weekPanel.status) {
+      weekPanel.status.textContent = `Vika: ${data.week_start || ''}`;
+      weekPanel.status.style.display = 'inline-block';
+    }
 
-    weekPanel.output.innerHTML = `
-      <div class="week-result-note">Vikuplan tilbúið.</div>
-    `;
+    if (weekPanel.output) {
+      weekPanel.output.innerHTML = `
+        <div class="week-result-note">Vikuplan tilbúið.</div>
+      `;
+    }
 
     renderWeekCards();
   }
@@ -955,9 +965,11 @@ function updateAllResidualsFromWeek() {
   }
 
   function renderWeekFallback(schedule = [], errorText = '') {
-    weekPanel.output.innerHTML = errorText
-      ? `<div class="week-error">${errorText}</div>`
-      : '';
+    if (weekPanel.output) {
+      weekPanel.output.innerHTML = errorText
+        ? `<div class="week-error">${errorText}</div>`
+        : '';
+    }
     renderWeekCards();
   }
 
