@@ -264,8 +264,8 @@ window.updateLastPlyoFromWeekSelections =
   const weekPanel = {
     grid: document.getElementById('microdose-week-grid'),
     run: document.getElementById('microdose-week-run'),
-    output: document.getElementById('microdose-week-output'),
-    status: document.getElementById('microdose-week-status'),
+    output: document.getElementById('weekResult') || document.getElementById('microdose-week-output'),
+    status: document.getElementById('microdose-week-status') || document.getElementById('weekMeta'),
     resStrength: document.getElementById('residual-strength'),
     resPower: document.getElementById('residual-power'),
     resPlyo: document.getElementById('residual-plyo'),
@@ -3948,30 +3948,32 @@ function renderWeekCards() {
   const empty = document.getElementById('weekEmpty');
   if (!root) return;
 
-  const schedule = readWeekScheduleFromUI();
+  let schedule = [];
+  try {
+    schedule = (typeof readWeekScheduleFromUI === 'function' ? readWeekScheduleFromUI() : []) || [];
+  } catch (e) {
+    console.warn('readWeekScheduleFromUI failed', e);
+    schedule = [];
+  }
+
+  // normalize to 7 items
+  if (!Array.isArray(schedule)) schedule = [];
+  while (schedule.length < 7) schedule.push({});
+
   const keys = ['man','tri','mid','fim','fos','lau','sun'];
   const labels = ['Mán','Þri','Mið','Fim','Fös','Lau','Sun'];
 
- const hasAny = Array.isArray(schedule) && schedule.some(s => (s?.dagskra && s.dagskra !== '—') || (s?.alag && s.alag !== '—'));
-if (empty) empty.style.display = hasAny ? 'none' : 'block';
+  const hasAny = schedule.some(d => d && ((d.dagskra && d.dagskra !== '-') || (d.alag && d.alag !== '-')));
+  if (empty) empty.style.display = hasAny ? 'none' : 'block';
 
   root.innerHTML = keys.map((k, i) => {
-    const s = schedule[i] || {};
-    const dagskra = s.dagskra || '—';
-    const alag = s.alag || '—';
-
-    // basic litamerking (má tengja við þitt Ljósakerfi seinna)
-    const tag = alag.toLowerCase().includes('há') ? 'Appelsínugult'
-              : alag.toLowerCase().includes('mið') ? 'Gult'
-              : 'Grænt';
-
+    const d = schedule[i] || {};
+    const dagskra = d.dagskra ?? d.schedule ?? d.type ?? '–';
+    const alag = d.alag ?? d.load ?? '–';
     return `
       <button type="button" class="week-day-card" data-day="${k}">
-        <div class="week-card-top">
-          <div class="week-card-title">${labels[i]}</div>
-          <span class="week-tag">${tag}</span>
-        </div>
-        <div class="week-card-sub">${dagskra} · ${alag}</div>
+        <div style="font-weight:700">${labels[i]}</div>
+        <div style="opacity:.85;font-size:13px">${dagskra} · ${alag}</div>
       </button>
     `;
   }).join('');
