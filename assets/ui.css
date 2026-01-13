@@ -871,9 +871,13 @@ html body #resultsPanel #microdose-week-grid > .week-card:nth-child(7){ grid-col
 }
 /* FIX: the wrapper is shrink-wrapping the weekday grid */
 section#resultsPanel.panel .week-days-grid{
-  display: block !important;     /* stop wrapper-grid/flex from shrinking */
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 14px !important;
   width: 100% !important;
   max-width: none !important;
+  justify-items: stretch !important;
+  align-items: stretch !important;
 }
 #resultsPanel .week-days-grid{
   width: 100% !important;
