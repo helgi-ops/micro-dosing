@@ -197,6 +197,14 @@ body{
   top: 12px;
   z-index: 5;
 }
+.roster-add-player{
+  margin-bottom: 1.25rem;
+}
+.roster-auth{
+  opacity: 0.85;
+  border-top: 1px solid rgba(255,255,255,.12);
+  padding-top: 1rem;
+}
 
 .app-hero{
   width: 100%;

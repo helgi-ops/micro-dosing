@@ -5,10 +5,11 @@ const IDS = {
   hook: "rosterHooks",      // UI á að fara hingað (Roster view)
   status: "rosterStatus",
   list: "rosterPlayerList",
-  first: "addPlayerFirst",
-  last: "addPlayerLast",
-  pos: "addPlayerPos",
-  btn: "btnAddPlayer",
+  first: "playerFirstName",
+  last: "playerLastName",
+  pos: "playerPosition",
+  btn: "addPlayerBtn",
+  authHint: "authRequiredHint"
 };
 
 function byId(id) { return document.getElementById(id); }
@@ -28,25 +29,30 @@ function ensureRosterUI() {
 
   // Clear + rebuild (þannig þetta virkar alltaf eftir route/view skipti)
   host.innerHTML = `
-    <div id="authBoxMount"></div>
+    <section class="roster-add-player">
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:0 0 10px;">
+        <input id="${IDS.first}" placeholder="Fornafn"
+          style="padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:160px;" />
+        <input id="${IDS.last}" placeholder="Eftirnafn"
+          style="padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:160px;" />
+        <input id="${IDS.pos}" placeholder="Staða (val)"
+          style="padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:140px;" />
+        <button id="${IDS.btn}" style="padding:10px 14px; border-radius:10px;">Bæta við leikmanni</button>
+      </div>
+      <p id="${IDS.authHint}" class="hint auth-required" style="display:block;">Skráðu þig inn og veldu lið til að vista leikmenn.</p>
+    </section>
+
+    <section class="roster-auth">
+      <div id="authBoxMount"></div>
+    </section>
+
     <div id="${IDS.status}" style="margin:10px 0; opacity:.85;"></div>
-
-    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0;">
-      <input id="${IDS.first}" placeholder="Fornafn"
-        style="padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:180px;" />
-      <input id="${IDS.last}" placeholder="Eftirnafn"
-        style="padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:180px;" />
-      <input id="${IDS.pos}" placeholder="Staða (val)"
-        style="padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:160px;" />
-      <button id="${IDS.btn}" style="padding:10px 14px; border-radius:10px;">Bæta við leikmanni</button>
-    </div>
-
     <div id="${IDS.list}" style="display:grid; gap:8px;"></div>
   `;
 
   // Render auth UI inside roster panel if helper is exposed
   if (window.renderAuthBox) {
-    window.renderAuthBox(host);
+    window.renderAuthBox(host.querySelector('.roster-auth') || host);
   }
 }
 
@@ -76,15 +82,18 @@ async function loadPlayers(teamId) {
   if (!status) return;
 
   // þarf login (RLS)
-  if (!(await isSignedIn())) {
+  const signedIn = await isSignedIn();
+  if (!signedIn) {
     status.textContent = "Skráðu þig inn til að sjá lið og leikmenn.";
     renderPlayers([]);
+    updateAddState(signedIn, teamId);
     return;
   }
 
   if (!teamId) {
     status.textContent = "Veldu lið (efst) til að hlaða leikmenn.";
     renderPlayers([]);
+    updateAddState(signedIn, teamId);
     return;
   }
 
@@ -93,10 +102,12 @@ async function loadPlayers(teamId) {
     const players = await api.getPlayers(teamId);
     status.textContent = `Leikmenn: ${players.length}`;
     renderPlayers(players);
+    updateAddState(signedIn, teamId);
   } catch (e) {
     console.error(e);
     status.textContent = "Villa við að hlaða leikmenn: " + (e?.message || e);
     renderPlayers([]);
+    updateAddState(signedIn, teamId);
   }
 }
 
@@ -128,6 +139,14 @@ async function addPlayer(teamId) {
     console.error(e);
     status.textContent = "Villa við að bæta við leikmanni: " + (e?.message || e);
   }
+}
+
+async function updateAddState(isAuthed, teamId){
+  const btn = byId(IDS.btn);
+  const hint = byId(IDS.authHint);
+  const disabled = !isAuthed || !teamId;
+  if (btn) btn.disabled = disabled;
+  if (hint) hint.style.display = disabled ? "block" : "none";
 }
 
 function wire() {
