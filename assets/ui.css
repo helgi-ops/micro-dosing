@@ -176,8 +176,9 @@ body{
 }
 
 .app-hero{
-  max-width: 1220px;
-  margin: 14px auto 10px;
+  width: 100%;
+  max-width: none;
+  margin: 14px 0 10px;
 }
 .app-hero__inner{
   padding: 18px 22px 20px;
