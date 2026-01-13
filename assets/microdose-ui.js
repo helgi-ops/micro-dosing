@@ -838,7 +838,7 @@ function updateAllResidualsFromWeek() {
       });
       if (!res.ok) throw new Error(`Villa frá netlify (${res.status})`);
       const data = await res.json();
-      renderDayResult(data);
+      renderDayResult(data, sched || {});
     } catch (err) {
       dagPanel.output.innerHTML = `<strong>Villa:</strong> ${err.message || err}`;
     } finally {
@@ -847,14 +847,16 @@ function updateAllResidualsFromWeek() {
     }
   }
 
-  function renderDayResult(data) {
+  function renderDayResult(data, sched = {}) {
     if (!data || data.status !== 'ok') {
       dagPanel.output.innerHTML = '<strong>Engar niðurstöður.</strong>';
       return;
     }
     const disp = mapDisplayPlan(data, null, currentPrevSched, getExposureValue());
-    dagPanel.status.textContent = `Ljósakerfi: ${data.traffic?.toUpperCase() || ''} – ${disp.plan}`;
+    if (dagPanel.status) {
+      dagPanel.status.textContent = `Ljósakerfi: ${data.traffic?.toUpperCase() || ''} – ${disp.plan}`;
       dagPanel.status.style.display = 'inline-block';
+    }
       const blocks = [
         `<strong>Dagur:</strong> ${data.dagur}`,
         `<strong>Fókus:</strong> ${data.focus}`,
@@ -864,8 +866,8 @@ function updateAllResidualsFromWeek() {
         `<strong>Rúmmál:</strong> ${data.volume}`,
         `<strong>Sett:</strong> ${Array.isArray(data.sett) ? data.sett.join(' · ') : ''}`,
         `<strong>Stoð:</strong> ${Array.isArray(data.stod) ? data.stod.join(' · ') : ''}`,
-        `<strong>Dagskrá:</strong> ${data.dagskra || sched?.dagskra || ''}`,
-        `<strong>Álag:</strong> ${data.alag || sched?.alag || ''}`,
+        `<strong>Dagskrá:</strong> ${data.dagskra || sched.dagskra || ''}`,
+        `<strong>Álag:</strong> ${data.alag || sched.alag || ''}`,
         `<strong>Exposure:</strong> ${getExposureValue()}`
       ];
       if (disp.exposureNote) blocks.push(`<strong>Exposure ath.:</strong> ${disp.exposureNote}`);
