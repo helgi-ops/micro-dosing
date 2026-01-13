@@ -4196,6 +4196,14 @@ function renderWeekCards(resultOverride, scheduleOverride) {
         ? day.instructions.filter(Boolean).slice(0, 2).join(' · ')
         : (day.instructions || '');
       const noteParts = [];
+      const planLower = `${disp.plan || day.plan || template}`.toLowerCase();
+      if (planLower.includes('primer')) {
+        noteParts.push('Primer: Endurheimt / neural primer, 6–10 mín – engin ný þjálfun.');
+      } else if (planLower.includes('maint')) {
+        noteParts.push('Maintenance: Viðhald/snerting með lágu magni, oft isometric bias.');
+      } else if (planLower.includes('anchor')) {
+        noteParts.push('Anchor: Aðal lota með háum gæðum (grænn dagur), forðast á gulum/rauðum.');
+      }
       if (disp.note) noteParts.push(disp.note);
       const residualNote = day.residual_note || day.note;
       if (residualNote) noteParts.push(residualNote);
