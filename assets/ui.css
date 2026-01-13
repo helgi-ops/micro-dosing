@@ -468,6 +468,107 @@ body{
     margin-top: 10px;
   }
 }
+
+/* ---------- Monitoring view ---------- */
+.monitoring-panel{
+  margin-top: 14px;
+}
+.monitoring-filters{
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.monitoring-filters select{
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  color: #f6f8ff;
+  border-radius: 10px;
+  height: 38px;
+  padding: 0 10px;
+}
+.monitoring-table{
+  margin-top: 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.mon-row{
+  display: grid;
+  grid-template-columns: 1.4fr repeat(5, 0.8fr) 1.6fr;
+  align-items: center;
+  padding: 10px 12px;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.mon-row:last-child{
+  border-bottom: none;
+}
+.mon-head{
+  background: rgba(255,255,255,.05);
+  font-weight: 700;
+}
+.mon-player{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mon-actions{
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pill{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-weight: 700;
+}
+.pill-green{
+  background: rgba(67,225,149,.16);
+  border-color: rgba(67,225,149,.3);
+  color: #6ee8af;
+}
+.pill-yellow{
+  background: rgba(245,197,66,.16);
+  border-color: rgba(245,197,66,.3);
+  color: #f5d27b;
+}
+.pill-red{
+  background: rgba(225,84,84,.16);
+  border-color: rgba(225,84,84,.3);
+  color: #f29c9c;
+}
+.pill.ghost{
+  background: transparent;
+}
+@media (max-width: 1020px){
+  .mon-row{
+    grid-template-columns: 1.3fr repeat(5, 0.9fr) 1.4fr;
+  }
+}
+@media (max-width: 820px){
+  .mon-row{
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "player player"
+      "readiness soreness"
+      "sleep plan"
+      "flag actions";
+  }
+  .mon-head{ display: none; }
+  .mon-row > :nth-child(1){ grid-area: player; }
+  .mon-row > :nth-child(2){ grid-area: readiness; }
+  .mon-row > :nth-child(3){ grid-area: soreness; }
+  .mon-row > :nth-child(4){ grid-area: sleep; }
+  .mon-row > :nth-child(5){ grid-area: plan; }
+  .mon-row > :nth-child(6){ grid-area: flag; }
+  .mon-row > :nth-child(7){ grid-area: actions; }
+}
 /* ---------- Coach sidebar (left nav) ---------- */
 .coach-sidebar{
   position: sticky;

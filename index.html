@@ -648,6 +648,101 @@
       </div>
     </section>
 
+    <section class="panel monitoring-panel no-print" id="monitoring">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Monitoring</p>
+          <h2>Dagleg yfirlit – Leikmenn</h2>
+          <p class="muted">Rauntíma stöðugreining: readiness, soreness, svefn, plan-status og flags.</p>
+        </div>
+        <div class="monitoring-filters">
+          <select>
+            <option>All status</option>
+            <option>Green</option>
+            <option>Yellow</option>
+            <option>Red</option>
+          </select>
+          <select>
+            <option>Sort: Alphabetical</option>
+            <option>Sort: Worst first</option>
+            <option>Sort: Missing plan</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="monitoring-table">
+        <div class="mon-row mon-head">
+          <div>Leikmaður</div>
+          <div>Readiness</div>
+          <div>Soreness</div>
+          <div>Sleep</div>
+          <div>Plan today?</div>
+          <div>Flag</div>
+          <div>Aðgerðir</div>
+        </div>
+
+        <div class="mon-row">
+          <div class="mon-player">
+            <span class="status-light green"></span>
+            <div>
+              <strong>Helgi Jónsson</strong>
+              <div class="muted small">Forward</div>
+            </div>
+          </div>
+          <div><span class="pill pill-green">7</span></div>
+          <div><span class="pill pill-yellow">2</span></div>
+          <div><span class="pill pill-green">1</span></div>
+          <div><span class="pill pill-green ghost">Yes</span></div>
+          <div><span class="pill pill-green">Green</span></div>
+          <div class="mon-actions">
+            <button type="button" class="ghost-btn small-btn">Nudge</button>
+            <button type="button" class="ghost-btn small-btn">Override</button>
+            <button type="button" class="ghost-btn small-btn">Mark done</button>
+          </div>
+        </div>
+
+        <div class="mon-row">
+          <div class="mon-player">
+            <span class="status-light yellow"></span>
+            <div>
+              <strong>Sara Björk</strong>
+              <div class="muted small">Midfielder</div>
+            </div>
+          </div>
+          <div><span class="pill pill-yellow">5</span></div>
+          <div><span class="pill pill-yellow">2</span></div>
+          <div><span class="pill pill-red">2</span></div>
+          <div><span class="pill pill-red ghost">No</span></div>
+          <div><span class="pill pill-yellow">Yellow</span></div>
+          <div class="mon-actions">
+            <button type="button" class="ghost-btn small-btn">Nudge</button>
+            <button type="button" class="ghost-btn small-btn">Override</button>
+            <button type="button" class="ghost-btn small-btn">Mark done</button>
+          </div>
+        </div>
+
+        <div class="mon-row">
+          <div class="mon-player">
+            <span class="status-light red"></span>
+            <div>
+              <strong>Aron Pálmi</strong>
+              <div class="muted small">Defender</div>
+            </div>
+          </div>
+          <div><span class="pill pill-red">3</span></div>
+          <div><span class="pill pill-red">3</span></div>
+          <div><span class="pill pill-yellow">1</span></div>
+          <div><span class="pill pill-red ghost">No</span></div>
+          <div><span class="pill pill-red">Red</span></div>
+          <div class="mon-actions">
+            <button type="button" class="ghost-btn small-btn">Nudge</button>
+            <button type="button" class="ghost-btn small-btn">Override</button>
+            <button type="button" class="ghost-btn small-btn">Mark done</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <aside class="athlete-drawer no-print" aria-label="Athlete detail drawer">
       <div class="drawer-head">
         <div>
