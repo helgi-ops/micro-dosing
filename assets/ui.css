@@ -276,7 +276,8 @@ select:focus, input:focus, textarea:focus{
 }
 
 /* Styling for generated Vikuplan cards */
-#weekCards .week-day-card{
+#weekCards .week-day-card,
+#weekCards .week-card{
   width: 100%;
   min-height: 170px;
   border-radius: 16px;
@@ -293,11 +294,42 @@ select:focus, input:focus, textarea:focus{
   color: #f4f6fb;
   cursor: pointer;
 }
-#weekCards .week-day-card:hover{
+#weekCards .week-day-card:hover,
+#weekCards .week-card:hover{
   border-color: rgba(255,255,255,.2);
   transform: translateY(-1px);
   transition: all .15s ease;
 }
+
+/* Keep 4+3 layout matching selector grid */
+#weekCards{
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+#weekCards .week-day-card:nth-child(5),
+#weekCards .week-card:nth-child(5){ grid-column: 1; }
+#weekCards .week-day-card:nth-child(6),
+#weekCards .week-card:nth-child(6){ grid-column: 2; }
+#weekCards .week-day-card:nth-child(7),
+#weekCards .week-card:nth-child(7){ grid-column: 3; }
+
+/* Traffic tags */
+.tag{
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  color: #fff;
+  background: rgba(255,255,255,0.14);
+}
+.traffic-rautt{ background: linear-gradient(180deg, #c43a3a, #8c2020); }
+.traffic-gult{ background: linear-gradient(180deg, #d9a441, #b57d13); }
+.traffic-graent{ background: linear-gradient(180deg, #31b26d, #1e7f4b); }
 
 /* Card styling (day tiles) */
 .card{

@@ -4037,7 +4037,7 @@ function renderWeekCards(resultOverride, scheduleOverride) {
       if (residualNote) noteParts.push(residualNote);
       if (!noteParts.length && trafficNotes[trafficTag]) noteParts.push(trafficNotes[trafficTag]);
       return `
-        <button type="button" class="week-day-card" data-day="${k}">
+        <button type="button" class="week-day-card week-card" data-day="${k}">
           <div style="display:flex;gap:6px;align-items:center;font-weight:700">
             <span>${labels[i]}</span>
             ${day.traffic ? `<span class="tag traffic-${trafficTag}">${day.traffic}</span>` : ''}
@@ -4058,7 +4058,7 @@ function renderWeekCards(resultOverride, scheduleOverride) {
     const dagskra = d.dagskra ?? d.schedule ?? d.type ?? '–';
     const alag = d.alag ?? d.load ?? '–';
     return `
-      <button type="button" class="week-day-card" data-day="${k}">
+      <button type="button" class="week-day-card week-card" data-day="${k}">
         <div style="font-weight:700">${labels[i]}</div>
         <div style="opacity:.85;font-size:13px">${dagskra} · ${alag}</div>
       </button>
