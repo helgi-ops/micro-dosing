@@ -926,3 +926,24 @@ section#resultsPanel.panel #microdose-week-grid > .week-card select{
 section#resultsPanel.panel #microdose-week-grid > .week-card:nth-child(5){ grid-column: 1; }
 section#resultsPanel.panel #microdose-week-grid > .week-card:nth-child(6){ grid-column: 2; }
 section#resultsPanel.panel #microdose-week-grid > .week-card:nth-child(7){ grid-column: 3; }
+
+/* FINAL ALIGN: make Vikuplan output grid match selector (4 on top, 3 below) */
+html body #weekCards{
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  width: 100% !important;
+  justify-items: stretch !important;
+  align-items: stretch !important;
+}
+html body #weekCards .week-day-card,
+html body #weekCards .week-card{
+  width: 100% !important;
+  min-width: 0 !important;
+}
+html body #weekCards .week-day-card:nth-child(5),
+html body #weekCards .week-card:nth-child(5){ grid-column: 1 !important; }
+html body #weekCards .week-day-card:nth-child(6),
+html body #weekCards .week-card:nth-child(6){ grid-column: 2 !important; }
+html body #weekCards .week-day-card:nth-child(7),
+html body #weekCards .week-card:nth-child(7){ grid-column: 3 !important; }
