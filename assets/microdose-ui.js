@@ -4400,3 +4400,268 @@ function renderWeekCards(resultOverride, scheduleOverride) {
 
   document.addEventListener('DOMContentLoaded', wire);
 })();
+/* =========================================================
+   MICRODOSE – SHARED STATE + DAY SELECTION WIRING
+   Drop-in patch (safe to paste at bottom of microdose-ui.js)
+   ========================================================= */
+
+(function microdoseStatePatch() {
+  const DAY_KEYS = ['man','tri','mid','fim','fos','lau','sun'];
+  const UI_TO_KEY = { 'Mán':'man', 'Þri':'tri', 'Mið':'mid', 'Fim':'fim', 'Fös':'fos', 'Lau':'lau', 'Sun':'sun' };
+
+  function normDayKey(k){
+    if (!k) return 'man';
+    const kk = String(k).toLowerCase();
+    if (DAY_KEYS.includes(kk)) return kk;
+    return UI_TO_KEY[k] || 'man';
+  }
+
+  function safeSlug(v){
+    return String(v || 'default').toLowerCase().replace(/\s+/g,'-');
+  }
+
+  function getPlayerId(){
+    const sel = document.getElementById('playerSelect');
+    return safeSlug(sel?.value || 'default');
+  }
+
+  function storageKey(pid){
+    return `microdose_selected_day_v1_${pid}`;
+  }
+
+  function ensureState(){
+    if (!window.__microdoseState) {
+      window.__microdoseState = {
+        playerId: getPlayerId(),
+        selectedDayKey: 'man',
+        persist(){
+          try {
+            localStorage.setItem(storageKey(this.playerId), this.selectedDayKey);
+          } catch(e){}
+        },
+        load(){
+          try {
+            const v = localStorage.getItem(storageKey(this.playerId));
+            if (v) this.selectedDayKey = normDayKey(v);
+          } catch(e){}
+        }
+      };
+    }
+    window.__microdoseState.playerId = getPlayerId();
+    window.__microdoseState.load();
+  }
+
+  function highlight(dayKey){
+    const root = document.getElementById('weekCards') || document.getElementById('weekPlan');
+    if (!root) return;
+    root.querySelectorAll('.is-selected').forEach(el => el.classList.remove('is-selected'));
+    const el = root.querySelector(`[data-day="${dayKey}"]`);
+    if (el) el.classList.add('is-selected');
+  }
+
+  function selectDay(dayKey){
+    ensureState();
+    window.__microdoseState.selectedDayKey = normDayKey(dayKey);
+    window.__microdoseState.persist();
+
+    // sync dropdown
+    const focusSel = document.getElementById('focusDaySelect');
+    if (focusSel) {
+      const ui = Object.entries(UI_TO_KEY).find(([,k]) => k === window.__microdoseState.selectedDayKey)?.[0];
+      if (ui) focusSel.value = ui;
+    }
+
+    highlight(window.__microdoseState.selectedDayKey);
+  }
+
+  function injectStyle(){
+    if (document.getElementById('md-selected-style')) return;
+    const s = document.createElement('style');
+    s.id = 'md-selected-style';
+    s.textContent = `.is-selected{outline:2px solid rgba(0,0,0,.35);outline-offset:2px}`;
+    document.head.appendChild(s);
+  }
+
+  function wire(){
+    injectStyle();
+    ensureState();
+    selectDay(window.__microdoseState.selectedDayKey);
+
+    // player change
+    const playerSel = document.getElementById('playerSelect');
+    if (playerSel) {
+      playerSel.addEventListener('change', () => {
+        ensureState();
+        selectDay(window.__microdoseState.selectedDayKey);
+      });
+    }
+
+    // focus dropdown
+    const focusSel = document.getElementById('focusDaySelect');
+    if (focusSel) {
+      focusSel.addEventListener('change', () => {
+        selectDay(UI_TO_KEY[focusSel.value] || focusSel.value);
+      });
+    }
+
+    // week card click (robust)
+    const root = document.getElementById('weekCards') || document.getElementById('weekPlan');
+    if (root) {
+      root.addEventListener('click', (e) => {
+        const card = e.target.closest('[data-day]');
+        if (card) selectDay(card.dataset.day);
+      });
+    }
+
+    // after build week → reapply highlight
+    const buildBtn = document.getElementById('buildWeekBtn');
+    if (buildBtn) {
+      buildBtn.addEventListener('click', () => {
+        setTimeout(() => selectDay(window.__microdoseState.selectedDayKey), 50);
+      });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', wire);
+})();
+/* =========================================================
+   PATCH 1 — Disable "Búa til micro-dose plan" until ready
+   - Requires: week schedule exists, day selected, readiness set
+   - Shows clear status messages instead of "nothing happens"
+   ========================================================= */
+
+(function microdosePatch1_DisableGenerateUntilReady() {
+  const KEY_TO_UI = { man:'Mán', tri:'Þri', mid:'Mið', fim:'Fim', fos:'Fös', lau:'Lau', sun:'Sun' };
+  const UI_SET = new Set(['Mán','Þri','Mið','Fim','Fös','Lau','Sun']);
+
+  function getEl(id){ return document.getElementById(id); }
+
+  function getSelectedDayLabel() {
+    // Prefer shared state if present
+    const k = window.__microdoseState?.selectedDayKey;
+    if (k && KEY_TO_UI[k]) return KEY_TO_UI[k];
+
+    // Otherwise fall back to select value
+    const sel = getEl('focusDaySelect') || getEl('microdose-dagur');
+    const v = sel?.value;
+    if (v && UI_SET.has(v)) return v;
+
+    return null;
+  }
+
+  function hasValidWeekSchedule() {
+    try {
+      // readWeekScheduleFromUI is defined in microdose-ui.js
+      const schedule = (typeof readWeekScheduleFromUI === 'function') ? readWeekScheduleFromUI() : null;
+      if (!Array.isArray(schedule) || schedule.length !== 7) return false;
+
+      // Minimal validation: must have a day label per entry (dagur)
+      for (const d of schedule) {
+        if (!d || !d.dagur) return false;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function readinessValue() {
+    const r = getEl('microdose-readiness');
+    if (!r) return null;
+    const n = Number(r.value);
+    if (!Number.isFinite(n)) return null;
+    // readiness slider is 1–10 in your UI
+    if (n < 1 || n > 10) return null;
+    return n;
+  }
+
+  function setStatus(msg) {
+    const status = getEl('microdose-status') || document.querySelector('#focusNote');
+    if (!status) return;
+    status.style.display = msg ? 'block' : 'none';
+    status.textContent = msg || '';
+  }
+
+  function setGenerateEnabled(enabled) {
+    const btn = getEl('microdose-run');
+    if (!btn) return;
+    btn.disabled = !enabled;
+    // Keep original label if enabled, otherwise show what's happening
+    if (enabled) {
+      btn.textContent = 'Búa til micro-dose plan';
+    } else {
+      btn.textContent = 'Bíður eftir upplýsingum…';
+    }
+  }
+
+  function updateGenerateGate() {
+    const weekOk = hasValidWeekSchedule();
+    if (!weekOk) {
+      setGenerateEnabled(false);
+      setStatus('Búðu til vikuplan fyrst (Mán–Sun) til að geta búið til micro-dose plan.');
+      return;
+    }
+
+    const dayLabel = getSelectedDayLabel();
+    if (!dayLabel) {
+      setGenerateEnabled(false);
+      setStatus('Veldu dag úr vikunni (Mán–Sun) áður en þú býrð til micro-dose plan.');
+      return;
+    }
+
+    const r = readinessValue();
+    if (r == null) {
+      setGenerateEnabled(false);
+      setStatus('Skráðu readiness (1–10) áður en þú býrð til micro-dose plan.');
+      return;
+    }
+
+    setStatus(''); // clear
+    setGenerateEnabled(true);
+  }
+
+  function wire() {
+    // Run once on load
+    updateGenerateGate();
+
+    // Readiness changes
+    const r = getEl('microdose-readiness');
+    if (r) {
+      r.addEventListener('input', updateGenerateGate);
+      r.addEventListener('change', updateGenerateGate);
+    }
+
+    // Day selection changes
+    const daySel = getEl('focusDaySelect') || getEl('microdose-dagur');
+    if (daySel) {
+      daySel.addEventListener('change', updateGenerateGate);
+    }
+
+    // Week build/update button(s)
+    const weekRun = getEl('microdose-week-run') || getEl('buildWeekBtn');
+    if (weekRun) {
+      weekRun.addEventListener('click', () => setTimeout(updateGenerateGate, 80));
+    }
+
+    // Week day cards click (in case selection is via cards)
+    const weekRoot = getEl('microdose-week-grid') || getEl('weekCards') || getEl('weekPlan');
+    if (weekRoot) {
+      weekRoot.addEventListener('click', () => setTimeout(updateGenerateGate, 30));
+    }
+
+    // Player changes can affect stored state
+    const playerSel = getEl('playerSelect');
+    if (playerSel) {
+      playerSel.addEventListener('change', () => setTimeout(updateGenerateGate, 30));
+    }
+
+    // After generating a plan, the core code re-enables the button in finally.
+    // Re-apply gating right after clicks.
+    const genBtn = getEl('microdose-run');
+    if (genBtn) {
+      genBtn.addEventListener('click', () => setTimeout(updateGenerateGate, 50));
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', wire);
+})();
