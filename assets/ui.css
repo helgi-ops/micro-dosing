@@ -252,7 +252,7 @@ select:focus, input:focus, textarea:focus{
 /* ---------- Week cards grid ---------- */
 .cards, #weekCards{
   display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 .week-days-grid{
@@ -262,6 +262,12 @@ select:focus, input:focus, textarea:focus{
   width: 100%;
   justify-items: stretch;
 }
+.week-days-grid .week-day-card:nth-child(5),
+#weekCards .week-day-card:nth-child(5){ grid-column: 1; }
+.week-days-grid .week-day-card:nth-child(6),
+#weekCards .week-day-card:nth-child(6){ grid-column: 2; }
+.week-days-grid .week-day-card:nth-child(7),
+#weekCards .week-day-card:nth-child(7){ grid-column: 3; }
 @media (max-width: 980px){
   .cards, #weekCards{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

@@ -977,14 +977,6 @@ function updateAllResidualsFromWeek() {
     if (weekPanel.output) {
       weekPanel.output.innerHTML = `
         <div class="week-result-note">Vikuplan tilbúið.</div>
-        <div class="week-defs">
-          <strong>Skilgreiningar:</strong>
-          <ul>
-            <li><strong>Primer:</strong> Endurheimt / neural primer, 6–10 mín – engin ný þjálfun.</li>
-            <li><strong>Maintenance:</strong> Viðhald/snerting með lágu magni, oft isometric bias.</li>
-            <li><strong>Anchor:</strong> Aðal lota með háum gæðum (grænn dagur), forðast á gulum/rauðum.</li>
-          </ul>
-        </div>
       `;
     }
 
@@ -4013,6 +4005,11 @@ function renderWeekCards(resultOverride, scheduleOverride) {
 
   const keys = ['man','tri','mid','fim','fos','lau','sun'];
   const labels = ['Mán','Þri','Mið','Fim','Fös','Lau','Sun'];
+  const trafficNotes = {
+    rautt: 'Rautt: Engin ný þjálfun. Einungis endurheimt/primer.',
+    gult: 'Gult: Viðhald/snerting, halda magni lágu.',
+    graent: 'Grænt: Hægt að vinna hraðar eða anchor ef reglur leyfa.'
+  };
 
   const useResult = resultOverride && Array.isArray(resultOverride) ? resultOverride : null;
   const hasAny = useResult
@@ -4026,10 +4023,19 @@ function renderWeekCards(resultOverride, scheduleOverride) {
       const sched = schedule[i] || {};
       const traffic = (day.traffic || '').toLowerCase();
       const trafficTag = traffic.includes('rau') ? 'rautt' : traffic.includes('græ') ? 'graent' : 'gult';
-      const template = day.stefna || day.template || '—';
-      const time = day.minutur || day.time || '';
-      const plan = day.plan || '';
-      const note = day.residual_note || day.note || '';
+      const disp = typeof mapDisplayPlan === 'function' ? mapDisplayPlan(day, sched, null, getExposureValue()) : {};
+      const template = disp.template || day.stefna || day.template || '—';
+      const time = (disp.time && disp.time !== '—') ? disp.time : (day.minutur || day.time || '');
+      const lota = day.lota || '';
+      const volume = day.volume || '';
+      const sett = Array.isArray(day.sett) ? day.sett.filter(Boolean).join(' · ') : (day.sett || '');
+      const stod = Array.isArray(day.stod) ? day.stod.filter(Boolean).join(' · ') : (day.stod || '');
+      const focus = day.focus || disp.plan || '';
+      const noteParts = [];
+      if (disp.note) noteParts.push(disp.note);
+      const residualNote = day.residual_note || day.note;
+      if (residualNote) noteParts.push(residualNote);
+      if (!noteParts.length && trafficNotes[trafficTag]) noteParts.push(trafficNotes[trafficTag]);
       return `
         <button type="button" class="week-day-card" data-day="${k}">
           <div style="display:flex;gap:6px;align-items:center;font-weight:700">
@@ -4037,9 +4043,13 @@ function renderWeekCards(resultOverride, scheduleOverride) {
             ${day.traffic ? `<span class="tag traffic-${trafficTag}">${day.traffic}</span>` : ''}
           </div>
           <div style="font-weight:600;margin-top:4px;">${template}${time ? ' · ' + time : ''}</div>
-          ${plan ? `<div style="opacity:.9;font-size:13px;">${plan}</div>` : ''}
+          ${focus ? `<div style="opacity:.9;font-size:13px;">${focus}</div>` : ''}
+          ${lota ? `<div style="opacity:.9;font-size:13px;">${lota}</div>` : ''}
+          ${volume ? `<div style="opacity:.9;font-size:13px;">Ráðlögð lota: ${volume}</div>` : ''}
+          ${sett ? `<div style="opacity:.9;font-size:13px;">Sett: ${sett}</div>` : ''}
+          ${stod ? `<div style="opacity:.9;font-size:13px;">Stoð: ${stod}</div>` : ''}
           <div style="opacity:.85;font-size:13px;">Dagskrá: ${sched.dagskra || '–'} · Álag: ${sched.alag || '–'}</div>
-          ${note ? `<div style="opacity:.8;font-size:12px;margin-top:4px;">${note}</div>` : ''}
+          ${noteParts.length ? `<div style="opacity:.8;font-size:12px;margin-top:4px;">${noteParts.join(' ')}</div>` : ''}
         </button>
       `;
     }
