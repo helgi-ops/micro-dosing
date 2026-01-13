@@ -866,10 +866,12 @@ function updateAllResidualsFromWeek() {
       dagPanel.status.style.display = 'inline-block';
     }
     const prevSched = dayIdx > 0 && Array.isArray(schedule) ? schedule[dayIdx - 1] : null;
-    const tpl = getSessionTemplate(
-      { ...data, ...sched, dagur: data.dagur || sched.dagur || dayLabel, focus: data.focus || sched.focus },
-      { exposure: getExposureValue(), md1: isMDPlus1(prevSched) || ((prevSched?.type || '').toLowerCase() === 'game') }
-    );
+    const tpl = (typeof getSessionTemplate === 'function')
+      ? getSessionTemplate(
+          { ...data, ...sched, dagur: data.dagur || sched.dagur || dayLabel, focus: data.focus || sched.focus },
+          { exposure: getExposureValue(), md1: isMDPlus1(prevSched) || ((prevSched?.type || '').toLowerCase() === 'game') }
+        )
+      : { totalMinutes: 0, blocks: [], notes: ['No session template found.'] };
 
     const infoBlocks = [
       `<strong>Dagur:</strong> ${data.dagur || sched.dagur || dayLabel || '—'}`,
@@ -4209,10 +4211,12 @@ function renderWeekCards(resultOverride, scheduleOverride) {
       if (residualNote) noteParts.push(residualNote);
       if (!noteParts.length && trafficNotes[trafficTag]) noteParts.push(trafficNotes[trafficTag]);
       const prevSched = i > 0 ? schedule[i - 1] : null;
-      const tpl = getSessionTemplate(
-        { ...day, dagskra: sched.dagskra, alag: sched.alag, focus: focus || sched.dagskra },
-        { exposure: getExposureValue(), md1: isMDPlus1(prevSched) || ((prevSched?.type || '').toLowerCase() === 'game') }
-      );
+      const tpl = (typeof getSessionTemplate === 'function')
+        ? getSessionTemplate(
+            { ...day, dagskra: sched.dagskra, alag: sched.alag, focus: focus || sched.dagskra },
+            { exposure: getExposureValue(), md1: isMDPlus1(prevSched) || ((prevSched?.type || '').toLowerCase() === 'game') }
+          )
+        : { totalMinutes: 0, blocks: [], notes: ['No session template found.'] };
       const blockTitles = Array.isArray(tpl.blocks) ? tpl.blocks.map(b => b.title) : [];
       const previewTitles = blockTitles.slice(0, 3);
       const extraCount = blockTitles.length > 3 ? blockTitles.length - 3 : 0;
