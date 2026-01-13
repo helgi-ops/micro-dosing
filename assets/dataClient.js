@@ -14,15 +14,15 @@ export const api = {
   },
 
   async signInWithEmail(email) {
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin + window.location.pathname
-      }
-    });
-    if (error) throw error;
-    return data;
-  },
+  const { data, error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: "https://effervescent-cascaron-c992ff.netlify.app"
+    }
+  });
+  if (error) throw error;
+  return data;
+},
 
   async signOut() {
     const { error } = await supabase.auth.signOut();
