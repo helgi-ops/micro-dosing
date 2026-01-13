@@ -1059,6 +1059,18 @@ function updateAllResidualsFromWeek() {
     const uiValue = mapToUiValue[dayKey] ?? mapToUiValue[normDayKey(dayKey)] ?? dayKey;
     daySelect.value = uiValue;
 
+    // --- Single Source of Truth ---
+    // Keep selected day in shared state so "Búa til micro-dose plan" always
+    // knows which day is active, even after re-renders.
+    try {
+      if (window.__microdoseState) {
+        window.__microdoseState.selectedDayKey = normDayKey(dayKey);
+        if (typeof window.__microdoseState.persistSelectedDay === 'function') {
+          window.__microdoseState.persistSelectedDay();
+        }
+      }
+    } catch (_) {}
+
     const reco = getRecommendationForDay(dayKey);
     focusText.value = reco.focus || reco.text || '';
 
@@ -1066,6 +1078,17 @@ function updateAllResidualsFromWeek() {
 
     const panel = document.querySelector('#focusPanel') || focusText.closest('.card') || focusText;
     if (panel?.scrollIntoView) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Highlight selected week card (if present)
+    try {
+      const weekRoot = document.querySelector('#weekCards') || document.querySelector('#weekPlan') || document.querySelector('#microdose-week-grid');
+      if (weekRoot) {
+        weekRoot.querySelectorAll('.week-day-card.is-selected').forEach(el => el.classList.remove('is-selected'));
+        const k = normDayKey(dayKey);
+        const sel = weekRoot.querySelector(`.week-day-card[data-day="${k}"]`);
+        if (sel) sel.classList.add('is-selected');
+      }
+    } catch (_) {}
   }
 
   function getExposureValue() {
@@ -4244,7 +4267,7 @@ function renderWeekCards(resultOverride, scheduleOverride) {
     const d = schedule[i] || {};
     const dagskra = d.dagskra ?? d.schedule ?? d.type ?? '–';
     const alag = d.alag ?? d.load ?? '–';
-    return `
+  return `
       <button type="button" class="week-day-card week-card" data-day="${k}">
         <div style="font-weight:700">${labels[i]}</div>
         <div style="opacity:.85;font-size:13px">${dagskra} · ${alag}</div>
@@ -4252,3 +4275,128 @@ function renderWeekCards(resultOverride, scheduleOverride) {
     `;
   }).join('');
 }
+
+// ===============================
+// Microdose State + Wiring (Single Source of Truth)
+// - Keeps selected player/day and avoids "nothing happens" issues
+// - Works with existing UI without redesign
+// ===============================
+(function microdoseStateWiring(){
+  const DAY_KEYS = ['man','tri','mid','fim','fos','lau','sun'];
+  const UI_TO_KEY = { 'Mán':'man', 'Þri':'tri', 'Mið':'mid', 'Fim':'fim', 'Fös':'fos', 'Lau':'lau', 'Sun':'sun' };
+
+  function safeSlug(s){
+    return String(s || 'default').trim().toLowerCase().replace(/\s+/g, '-');
+  }
+
+  function getPlayerId(){
+    const el = document.getElementById('playerSelect');
+    return safeSlug(el?.value || 'default');
+  }
+
+  function selectedDayStorageKey(playerId){
+    return `microdose_selected_day_v1_${playerId || 'default'}`;
+  }
+
+  function normDayKey(k){
+    const kk = String(k || '').trim().toLowerCase();
+    if (DAY_KEYS.includes(kk)) return kk;
+    if (UI_TO_KEY[k]) return UI_TO_KEY[k];
+    return 'man';
+  }
+
+  function injectSelectedStyle(){
+    if (document.getElementById('md-selected-style')) return;
+    const style = document.createElement('style');
+    style.id = 'md-selected-style';
+    style.textContent = `
+      .week-day-card.is-selected{ outline:2px solid rgba(0,0,0,.35); outline-offset:2px; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function setSelectedDay(dayKey){
+    const k = normDayKey(dayKey);
+    window.__microdoseState.selectedDayKey = k;
+    window.__microdoseState.persistSelectedDay();
+
+    const focusSel = document.getElementById('focusDaySelect');
+    if (focusSel) {
+      const ui = Object.entries(UI_TO_KEY).find(([, key]) => key === k)?.[0];
+      if (ui) focusSel.value = ui;
+    }
+
+    try {
+      const weekRoot = document.getElementById('weekCards') || document.getElementById('weekPlan') || document.getElementById('microdose-week-grid');
+      if (weekRoot) {
+        weekRoot.querySelectorAll('.week-day-card.is-selected').forEach(el => el.classList.remove('is-selected'));
+        const sel = weekRoot.querySelector(`.week-day-card[data-day="${k}"]`);
+        if (sel) sel.classList.add('is-selected');
+      }
+    } catch (_) {}
+  }
+
+  function wire(){
+    injectSelectedStyle();
+
+    if (!window.__microdoseState) {
+      window.__microdoseState = {
+        playerId: getPlayerId(),
+        selectedDayKey: 'man',
+        persistSelectedDay(){
+          try {
+            const pid = this.playerId || getPlayerId();
+            localStorage.setItem(selectedDayStorageKey(pid), this.selectedDayKey);
+          } catch (_) {}
+        },
+        loadSelectedDay(){
+          try {
+            const pid = this.playerId || getPlayerId();
+            const saved = localStorage.getItem(selectedDayStorageKey(pid));
+            if (saved) this.selectedDayKey = normDayKey(saved);
+          } catch (_) {}
+        }
+      };
+    }
+
+    window.__microdoseState.playerId = getPlayerId();
+    window.__microdoseState.loadSelectedDay();
+    setSelectedDay(window.__microdoseState.selectedDayKey);
+
+    const playerSel = document.getElementById('playerSelect');
+    if (playerSel) {
+      playerSel.addEventListener('change', () => {
+        window.__microdoseState.playerId = getPlayerId();
+        window.__microdoseState.loadSelectedDay();
+        setSelectedDay(window.__microdoseState.selectedDayKey);
+      });
+    }
+
+    const focusSel = document.getElementById('focusDaySelect');
+    if (focusSel) {
+      focusSel.addEventListener('change', () => {
+        const k = UI_TO_KEY[focusSel.value] || focusSel.value;
+        setSelectedDay(k);
+      });
+    }
+
+    const weekRoot = document.getElementById('weekCards') || document.getElementById('weekPlan') || document.getElementById('microdose-week-grid');
+    if (weekRoot) {
+      weekRoot.addEventListener('click', (e) => {
+        const card = e.target.closest('.week-day-card,[data-day]');
+        const k = card?.getAttribute?.('data-day');
+        if (!k) return;
+        setSelectedDay(k);
+      });
+    }
+
+    const buildBtn = document.getElementById('buildWeekBtn');
+    if (buildBtn) {
+      buildBtn.addEventListener('click', () => {
+        setTimeout(() => setSelectedDay(window.__microdoseState.selectedDayKey), 80);
+      });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', wire);
+})();
