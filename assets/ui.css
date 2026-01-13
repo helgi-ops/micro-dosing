@@ -52,8 +52,17 @@ body{
 *{ -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
 /* ---------- App container ---------- */
+.app-shell{
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 18px;
+  padding: 0 18px 32px;
+}
 .app{
   max-width: 1220px;
+  width: 100%;
   margin: 0 auto;
   padding: 110px 22px 32px; /* top padding so sticky bar doesn’t overlap */
 }
@@ -164,6 +173,74 @@ body{
   height: 40px;
   padding: 0 14px;
   border-radius: 12px;
+}
+
+/* ---------- Coach sidebar (left nav) ---------- */
+.coach-sidebar{
+  position: sticky;
+  top: 70px; /* sits below the topbar */
+  align-self: start;
+  background: rgba(17,21,38,0.9);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  padding: 12px 10px;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.3);
+}
+.sidebar-header{
+  padding: 6px 10px 10px;
+  color: rgba(235,241,255,.72);
+  font-size: 12px;
+  letter-spacing: .2px;
+  text-transform: uppercase;
+}
+.sidebar-nav{
+  list-style: none;
+  margin: 0;
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sidebar-nav li button{
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #f4f6fb;
+  padding: 10px 12px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  font-weight: 600;
+}
+.sidebar-nav li button .dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.4);
+}
+.sidebar-nav li button:hover{
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.08);
+}
+.sidebar-nav li.active button{
+  background: rgba(var(--accent), .14);
+  border-color: rgba(var(--accent), .3);
+}
+.sidebar-nav li.active button .dot{
+  background: rgba(var(--accent), 1);
+}
+
+@media (max-width: 980px){
+  .app-shell{
+    grid-template-columns: 1fr;
+  }
+  .coach-sidebar{
+    position: relative;
+    top: 0;
+    order: -1;
+  }
 }
 
 /* ---------- Header hero ---------- */
