@@ -847,6 +847,112 @@
       </div>
     </aside>
 
+    <section class="panel reports-panel no-print" id="reportsView">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Reports</p>
+          <h2>Söguleg samantekt</h2>
+          <p class="muted">Byggt á published vikum, kláruðum plönum og skráðum check-ins.</p>
+        </div>
+        <div class="reports-filters">
+          <select>
+            <option>Week 32</option>
+            <option>Week 31</option>
+            <option>Weeks 28–32</option>
+          </select>
+          <select>
+            <option>All teams</option>
+            <option>Academy</option>
+            <option>First team</option>
+          </select>
+          <select>
+            <option>All players</option>
+            <option>By position</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="reports-grid">
+        <div class="report-card">
+          <div class="report-head">
+            <div>
+              <p class="eyebrow">Week Compliance</p>
+              <h4>Fylgni við áætlun</h4>
+            </div>
+            <span class="pill pill-green">87%</span>
+          </div>
+          <p class="muted small">Completed micro-dose days ÷ expected days (published vika).</p>
+          <div class="bar">
+            <div style="width:87%;"></div>
+          </div>
+          <ul class="muted small">
+            <li>Team: 87%</li>
+            <li>Group A: 82%</li>
+            <li>Top player: 95%</li>
+          </ul>
+        </div>
+
+        <div class="report-card">
+          <div class="report-head">
+            <div>
+              <p class="eyebrow">Minutes Completed</p>
+              <h4>Raunálag (mín)</h4>
+            </div>
+            <span class="pill pill-yellow">312</span>
+          </div>
+          <p class="muted small">Samtala lokinna micro-dose plana. Meðaltal per dag/viku ef til.</p>
+          <div class="bar">
+            <div style="width:60%;"></div>
+          </div>
+          <ul class="muted small">
+            <li>Weekly total: 312 mín</li>
+            <li>Daily avg: 45 mín</li>
+            <li>Completed vs planned: 90%</li>
+          </ul>
+        </div>
+
+        <div class="report-card">
+          <div class="report-head">
+            <div>
+              <p class="eyebrow">Red Days Count</p>
+              <h4>Viðvörunar-dagar</h4>
+            </div>
+            <span class="pill pill-red">6</span>
+          </div>
+          <p class="muted small">Fjöldi daga þar sem derived status = Red (readiness + soreness + sleep).</p>
+          <div class="bar">
+            <div style="width:35%;"></div>
+          </div>
+          <ul class="muted small">
+            <li>Team total: 6</li>
+            <li>Most: 3 per player</li>
+            <li>Heatmap ready (visual only)</li>
+          </ul>
+        </div>
+
+        <div class="report-card">
+          <div class="report-head">
+            <div>
+              <p class="eyebrow">Plan Types Used</p>
+              <h4>Dreifing á plönum</h4>
+            </div>
+            <span class="pill pill-green">Mix</span>
+          </div>
+          <p class="muted small">Primer, Maintenance, Power, Recovery – byggt á generated plönum (published).</p>
+          <div class="stacked-bar">
+            <div class="seg primer" style="width:30%;">Primer</div>
+            <div class="seg maint" style="width:40%;">Maint</div>
+            <div class="seg power" style="width:20%;">Power</div>
+            <div class="seg recov" style="width:10%;">Recovery</div>
+          </div>
+          <ul class="muted small">
+            <li>Primer 30% · Maintenance 40% · Power 20% · Recovery 10%</li>
+            <li>Sýnir raunverulega notkun kerfisins.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
   <div>
   <form>
     <div class="stack">
