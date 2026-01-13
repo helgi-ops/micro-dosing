@@ -310,6 +310,11 @@ function normDayKey(name) {
   const key = raw.replace(/[^a-záðéíóúýþæö]/g, '').slice(0, 3);
   return dayKeyMap[key] || key || 'man';
 }
+function dayIndexFromKey(name) {
+  const key = normDayKey(name);
+  const map = { man: 0, tri: 1, mid: 2, fim: 3, fos: 4, lau: 5, sun: 6 };
+  return map[key] ?? 0;
+}
 
 function playerSlug() {
   const p = document.getElementById('playerSelect');
@@ -814,10 +819,17 @@ function updateAllResidualsFromWeek() {
     dagPanel.status.style.display = 'none';
     dagPanel.output.textContent = '';
     try {
+      const schedule = readWeekScheduleFromUI();
+      const dayIdx = dayIndexFromKey(dagPanel.focusDaySelect?.value || dagPanel.dagur?.value || 'Mán');
+      const sched = Array.isArray(schedule) ? schedule[dayIdx] : null;
+      const focusVal = fmt(dagPanel.focus?.value || (sched ? `${sched.dagskra || ''} + ${sched.alag || ''}` : 'Hraði + styrkur'));
       const payload = {
         dagur: fmt(dagPanel.dagur?.value || 'Mán'),
         readiness: Number(dagPanel.readiness?.value || 7),
-        focus: fmt(dagPanel.focus?.value || 'Hraði + styrkur')
+        focus: focusVal,
+        dagskra: sched?.dagskra || '',
+        alag: sched?.alag || '',
+        week_schedule: schedule || []
       };
       const res = await fetch('/.netlify/functions/microdose', {
         method: 'POST',
@@ -842,21 +854,23 @@ function updateAllResidualsFromWeek() {
     }
     const disp = mapDisplayPlan(data, null, currentPrevSched, getExposureValue());
     dagPanel.status.textContent = `Ljósakerfi: ${data.traffic?.toUpperCase() || ''} – ${disp.plan}`;
-    dagPanel.status.style.display = 'inline-block';
-    const blocks = [
-      `<strong>Dagur:</strong> ${data.dagur}`,
-      `<strong>Fókus:</strong> ${data.focus}`,
-      `<strong>Áætlun:</strong> ${disp.template || data.stefna} (${disp.plan})`,
-      `<strong>Tímamörk:</strong> ${disp.time || data.lota || '—'}`,
-      `<strong>Ráðlögð lota:</strong> ${data.lota}`,
-      `<strong>Rúmmál:</strong> ${data.volume}`,
-      `<strong>Sett:</strong> ${Array.isArray(data.sett) ? data.sett.join(' · ') : ''}`,
-      `<strong>Stoð:</strong> ${Array.isArray(data.stod) ? data.stod.join(' · ') : ''}`,
-      `<strong>Exposure:</strong> ${getExposureValue()}`
-    ];
-    if (disp.exposureNote) blocks.push(`<strong>Exposure ath.:</strong> ${disp.exposureNote}`);
-    if (disp.note) blocks.push(`<strong>Ath:</strong> ${disp.note}`);
-    dagPanel.output.innerHTML = blocks.map(p => `<div>${p}</div>`).join('');
+      dagPanel.status.style.display = 'inline-block';
+      const blocks = [
+        `<strong>Dagur:</strong> ${data.dagur}`,
+        `<strong>Fókus:</strong> ${data.focus}`,
+        `<strong>Áætlun:</strong> ${disp.template || data.stefna} (${disp.plan})`,
+        `<strong>Tímamörk:</strong> ${disp.time || data.lota || '—'}`,
+        `<strong>Ráðlögð lota:</strong> ${data.lota}`,
+        `<strong>Rúmmál:</strong> ${data.volume}`,
+        `<strong>Sett:</strong> ${Array.isArray(data.sett) ? data.sett.join(' · ') : ''}`,
+        `<strong>Stoð:</strong> ${Array.isArray(data.stod) ? data.stod.join(' · ') : ''}`,
+        `<strong>Dagskrá:</strong> ${data.dagskra || sched?.dagskra || ''}`,
+        `<strong>Álag:</strong> ${data.alag || sched?.alag || ''}`,
+        `<strong>Exposure:</strong> ${getExposureValue()}`
+      ];
+      if (disp.exposureNote) blocks.push(`<strong>Exposure ath.:</strong> ${disp.exposureNote}`);
+      if (disp.note) blocks.push(`<strong>Ath:</strong> ${disp.note}`);
+      dagPanel.output.innerHTML = blocks.map(p => `<div>${p}</div>`).join('');
     currentPrevSched = null;
   }
 
@@ -953,7 +967,7 @@ function updateAllResidualsFromWeek() {
       `;
     }
 
-    renderWeekCards();
+    renderWeekCards(lastWeekResult, schedule);
   }
 
   function applyDayToPanel(dayData, sched) {
@@ -971,7 +985,7 @@ function updateAllResidualsFromWeek() {
         ? `<div class="week-error">${errorText}</div>`
         : '';
     }
-    renderWeekCards();
+    renderWeekCards(lastWeekResult, schedule);
   }
 
   function getRecommendationForDay(dayKey) {
@@ -3956,7 +3970,7 @@ if (typeof updateLastPlyoFromWeekSelections === 'function') updateLastPlyoFromWe
     // fallback: no-op if there is no previous implementation
   };
 })();
-function renderWeekCards(scheduleOverride) {
+function renderWeekCards(resultOverride, scheduleOverride) {
   const root = document.getElementById('weekCards');
   const empty = document.getElementById('weekEmpty');
   if (!root) return;
@@ -3978,10 +3992,36 @@ function renderWeekCards(scheduleOverride) {
   const keys = ['man','tri','mid','fim','fos','lau','sun'];
   const labels = ['Mán','Þri','Mið','Fim','Fös','Lau','Sun'];
 
-  const hasAny = schedule.some(d => d && ((d.dagskra && d.dagskra !== '-') || (d.alag && d.alag !== '-')));
+  const useResult = resultOverride && Array.isArray(resultOverride) ? resultOverride : null;
+  const hasAny = useResult
+    ? true
+    : schedule.some(d => d && ((d.dagskra && d.dagskra !== '-') || (d.alag && d.alag !== '-')));
   if (empty) empty.style.display = hasAny ? 'none' : 'block';
 
   root.innerHTML = keys.map((k, i) => {
+    if (useResult) {
+      const day = useResult[i] || {};
+      const sched = schedule[i] || {};
+      const traffic = (day.traffic || '').toLowerCase();
+      const trafficTag = traffic.includes('rau') ? 'rautt' : traffic.includes('græ') ? 'graent' : 'gult';
+      const template = day.stefna || day.template || '—';
+      const time = day.minutur || day.time || '';
+      const plan = day.plan || '';
+      const note = day.residual_note || day.note || '';
+      return `
+        <button type="button" class="week-day-card" data-day="${k}">
+          <div style="display:flex;gap:6px;align-items:center;font-weight:700">
+            <span>${labels[i]}</span>
+            ${day.traffic ? `<span class="tag traffic-${trafficTag}">${day.traffic}</span>` : ''}
+          </div>
+          <div style="font-weight:600;margin-top:4px;">${template}${time ? ' · ' + time : ''}</div>
+          ${plan ? `<div style="opacity:.9;font-size:13px;">${plan}</div>` : ''}
+          <div style="opacity:.85;font-size:13px;">Dagskrá: ${sched.dagskra || '–'} · Álag: ${sched.alag || '–'}</div>
+          ${note ? `<div style="opacity:.8;font-size:12px;margin-top:4px;">${note}</div>` : ''}
+        </button>
+      `;
+    }
+
     const d = schedule[i] || {};
     const dagskra = d.dagskra ?? d.schedule ?? d.type ?? '–';
     const alag = d.alag ?? d.load ?? '–';
