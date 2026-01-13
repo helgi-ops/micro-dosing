@@ -4874,3 +4874,159 @@ function renderWeekCards(resultOverride, scheduleOverride) {
 
   document.addEventListener('DOMContentLoaded', init);
 })();
+/* =========================================================
+   CODEX IMPLEMENTATION — Monitoring → Athlete Drawer binding
+   - Click a monitoring row to open drawer + populate header
+   - Syncs Microdose athleteName (+ sets playerSelect to Custom when needed)
+   ========================================================= */
+
+(function codexMonitoringToDrawer(){
+  const DRAWER_SEL = 'aside.athlete-drawer';
+  const OPEN_CLASS = 'is-open';
+  const CLOSED_CLASS = 'is-closed';
+
+  function qs(sel, root=document){ return root.querySelector(sel); }
+  function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+
+  function ensureDrawerStyle(){
+    if (document.getElementById('athleteDrawerCodexStyle')) return;
+    const s = document.createElement('style');
+    s.id = 'athleteDrawerCodexStyle';
+    s.textContent = `
+      ${DRAWER_SEL}.${CLOSED_CLASS}{ display:none !important; }
+      ${DRAWER_SEL}.${OPEN_CLASS}{ display:block; }
+      .mon-row.is-active { outline:2px solid rgba(124,140,255,0.35); outline-offset:2px; border-radius:10px; }
+      .mon-row { cursor:pointer; }
+    `;
+    document.head.appendChild(s);
+  }
+
+  function closeDrawer(drawer){
+    if (!drawer) return;
+    drawer.classList.remove(OPEN_CLASS);
+    drawer.classList.add(CLOSED_CLASS);
+    drawer.setAttribute('aria-hidden','true');
+  }
+
+  function openDrawer(drawer){
+    if (!drawer) return;
+    drawer.classList.remove(CLOSED_CLASS);
+    drawer.classList.add(OPEN_CLASS);
+    drawer.setAttribute('aria-hidden','false');
+  }
+
+  function readPlayerFromMonRow(row){
+    const name = (qs('.mon-player strong', row)?.textContent || '').trim();
+    const position = (qs('.mon-player .muted.small', row)?.textContent || '').trim();
+
+    // status-light on the left of the row has green/yellow/red
+    const light = qs('.mon-player .status-light', row);
+    const statusColor =
+      light?.classList.contains('green') ? 'green' :
+      light?.classList.contains('yellow') ? 'yellow' :
+      light?.classList.contains('red') ? 'red' : '';
+
+    // "Flag" column text, if present (6th column in your table-like layout)
+    // Safer: grab the first .pill with content Green/Yellow/Red
+    const flagPill = qsa('.pill', row).find(p => {
+      const t = (p.textContent || '').trim().toLowerCase();
+      return t === 'green' || t === 'yellow' || t === 'red';
+    });
+    const flagText = (flagPill?.textContent || '').trim();
+
+    return { name, position, statusColor, flagText };
+  }
+
+  function setDrawerHeader(drawer, data){
+    const title = qs('.drawer-head h3', drawer);
+    const subtitle = qs('.drawer-head .muted.small', drawer);
+    const headerLight = qs('.drawer-actions .status-light', drawer);
+
+    if (title && data.name) title.textContent = data.name;
+
+    // Subtitle format: "Position · Green status"
+    if (subtitle) {
+      const left = data.position || 'Athlete';
+      const right = (data.flagText || (data.statusColor ? (data.statusColor[0].toUpperCase()+data.statusColor.slice(1)) : '')) || '';
+      subtitle.textContent = right ? `${left} · ${right} status` : left;
+    }
+
+    if (headerLight) {
+      headerLight.classList.remove('green','yellow','red');
+      if (data.statusColor) headerLight.classList.add(data.statusColor);
+    }
+  }
+
+  function syncMicrodoseAthlete(name){
+    // Sync microdose athlete name input
+    const athleteName = qs('#athleteName');
+    if (athleteName && name) {
+      athleteName.value = name;
+      athleteName.dispatchEvent(new Event('input', { bubbles:true }));
+      athleteName.dispatchEvent(new Event('change', { bubbles:true }));
+    }
+
+    // If playerSelect doesn't have this exact option, move it to Custom
+    const playerSelect = qs('#playerSelect');
+    if (playerSelect && name) {
+      const options = qsa('option', playerSelect).map(o => (o.value || '').trim());
+      const hasExact = options.includes(name);
+      if (!hasExact) {
+        // Prefer "Custom" if exists
+        const hasCustom = options.includes('Custom');
+        if (hasCustom) playerSelect.value = 'Custom';
+        else playerSelect.value = '';
+      } else {
+        playerSelect.value = name;
+      }
+      playerSelect.dispatchEvent(new Event('change', { bubbles:true }));
+    }
+  }
+
+  function markActiveRow(row){
+    qsa('.monitoring-table .mon-row.is-active').forEach(r => r.classList.remove('is-active'));
+    row.classList.add('is-active');
+  }
+
+  function bind(){
+    ensureDrawerStyle();
+
+    const drawer = qs(DRAWER_SEL);
+    if (!drawer) return;
+
+    // Default closed
+    closeDrawer(drawer);
+
+    // Close button (✕)
+    const closeBtn = qsa('button', drawer).find(b => (b.textContent||'').trim() === '✕') || qs('.drawer-actions button', drawer);
+    if (closeBtn && !closeBtn.dataset.boundClose) {
+      closeBtn.dataset.boundClose = '1';
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeDrawer(drawer);
+      });
+    }
+
+    // Make monitoring rows clickable without editing HTML
+    const rows = qsa('.monitoring-table .mon-row').filter(r => !r.classList.contains('mon-head'));
+    rows.forEach(row => {
+      if (row.dataset.boundDrawerOpen) return;
+      row.dataset.boundDrawerOpen = '1';
+
+      row.addEventListener('click', (e) => {
+        // Ignore clicks on action buttons so they keep their behavior
+        if (e.target.closest('.mon-actions button')) return;
+
+        const data = readPlayerFromMonRow(row);
+        if (!data.name) return;
+
+        markActiveRow(row);
+        setDrawerHeader(drawer, data);
+        syncMicrodoseAthlete(data.name);
+        openDrawer(drawer);
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', bind);
+})();
