@@ -175,6 +175,14 @@ body{
   border-radius: 12px;
 }
 
+.app-hero{
+  max-width: 1220px;
+  margin: 14px auto 10px;
+}
+.app-hero__inner{
+  padding: 18px 22px 20px;
+}
+
 /* ---------- Coach sidebar (left nav) ---------- */
 .coach-sidebar{
   position: sticky;
