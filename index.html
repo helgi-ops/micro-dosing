@@ -953,6 +953,55 @@
       </div>
     </section>
 
+    <section class="panel spec-panel no-print" id="dailyPlanSpec">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Daily Plan Generation</p>
+          <h2>System logic – tenging Week Builder ↔ Athlete ↔ Plan</h2>
+          <p class="muted">Hvernig published vika + dagsform + kerfisástand verða að einu micro-dose plani.</p>
+        </div>
+      </div>
+
+      <div class="spec-grid">
+        <div class="spec-block">
+          <h4>Input Layers (forgang)</h4>
+          <ul>
+            <li><strong>Week Frame:</strong> Day Type, Load, Exposure, Residuals (published, global).</li>
+            <li><strong>Athlete status:</strong> Readiness, Soreness, Sleep, Stress → Green/Yellow/Red (daily, individual).</li>
+            <li><strong>System state:</strong> Updated residuals, restrictions, versioning (internal, rolling).</li>
+          </ul>
+        </div>
+        <div class="spec-block">
+          <h4>Generation steps</h4>
+          <ol>
+            <li>Validate: published vika, day defined, check-in present.</li>
+            <li>Allowed space: Day Type + Exposure + residuals → leyfilegir flokkar + max álag/lengd.</li>
+            <li>Modulate: Readiness (G/Y/R) styttir eða léttir en breytir ekki Day Type.</li>
+            <li>Select structure: Cluster / Contrast / French Contrast / Iso / Mobility o.s.frv. innan ramma.</li>
+            <li>Lock & store: versioned Daily Plan; sama check-in → sama plan, nýtt check-in → nýtt plan.</li>
+          </ol>
+        </div>
+        <div class="spec-block">
+          <h4>Output</h4>
+          <ul>
+            <li>Plan type (Primer / Maintenance / Power / Recovery), heildarlengd, æfingauppsetning, stop rules.</li>
+            <li>Stutt rök: af hverju þetta plan (based on Day Type, readiness, residuals, restrictions).</li>
+            <li>Sýnilegt leikmanni; sýnilegt þjálfara í Monitoring/Reports; notað í compliance.</li>
+          </ul>
+        </div>
+        <div class="spec-block">
+          <h4>Samantekt</h4>
+          <ul>
+            <li><strong>Week Builder:</strong> skilgreinir hvað má.</li>
+            <li><strong>Athlete check-in:</strong> segir hvernig líður í dag.</li>
+            <li><strong>Daily Plan Generation:</strong> túlkar og velur skynsamlegt plan núna.</li>
+            <li><strong>Monitoring/Reports:</strong> endurgjöf og greining á framkvæmd.</li>
+          </ul>
+          <p class="muted small">Vikan er stefna. Dagurinn er samningur. Kerfið er túlkurinn.</p>
+        </div>
+      </div>
+    </section>
+
   <div>
   <form>
     <div class="stack">
