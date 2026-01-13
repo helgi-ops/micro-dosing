@@ -192,6 +192,12 @@ body{
   padding: 0 10px;
 }
 
+#rosterHooks{
+  position: sticky;
+  top: 12px;
+  z-index: 5;
+}
+
 .app-hero{
   width: 100%;
   max-width: none;
