@@ -816,13 +816,20 @@ function updateAllResidualsFromWeek() {
     currentPrevSched = currentPrevSched || null;
     dagPanel.btn.disabled = true;
     dagPanel.btn.textContent = 'Bý til...';
-    dagPanel.status.style.display = 'none';
-    dagPanel.output.textContent = '';
+    if (dagPanel.status) dagPanel.status.style.display = 'none';
+    if (dagPanel.output) dagPanel.output.textContent = '';
     try {
       const schedule = readWeekScheduleFromUI();
       const dayIdx = dayIndexFromKey(dagPanel.focusDaySelect?.value || dagPanel.dagur?.value || 'Mán');
       const sched = Array.isArray(schedule) ? schedule[dayIdx] : null;
       const dayLabel = (sched && sched.dagur) ? sched.dagur : (dayNames[dayIdx] || 'Mán');
+      const weekDay = Array.isArray(lastWeekResult) ? lastWeekResult[dayIdx] : null;
+      // If we already have a full plan from the generated Vikuplan, use it directly.
+      if (weekDay) {
+        const enriched = { ...weekDay, status: weekDay.status || 'ok', dagur: weekDay.dagur || dayLabel };
+        renderDayResult(enriched, sched || {}, dayLabel);
+        return;
+      }
       const focusVal = fmt(dagPanel.focus?.value || (sched ? `${sched.dagskra || ''} + ${sched.alag || ''}` : 'Hraði + styrkur'));
       const payload = {
         dagur: fmt(dagPanel.dagur?.value || dayLabel),
