@@ -10,9 +10,9 @@ if (old) old.remove();
 
   const host =
     hostEl ||
-    document.getElementById("supabaseHooks") ||
-    document.querySelector("main") ||
-    document.body;
+    document.getElementById("rosterHooks");
+
+  if (!host) return; // birta aðeins í Roster view
 
   const box = document.createElement("div");
   box.id = "authBox";
@@ -110,6 +110,6 @@ supabase.auth.onAuthStateChange(async () => {
   await loadTeams();
 });
 
-const host = document.getElementById("supabaseHooks") || document.querySelector("main") || document.body;
-ensureAuthUI()
-loadTeams();
+const host = document.getElementById("rosterHooks");
+ensureAuthUI(host);
+if (host) loadTeams();
