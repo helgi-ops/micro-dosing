@@ -4665,3 +4665,129 @@ function renderWeekCards(resultOverride, scheduleOverride) {
 
   document.addEventListener('DOMContentLoaded', wire);
 })();
+/* =========================================================
+   PATCH — Athlete detail drawer: hidden by default + open/close
+   Safe drop-in (paste at bottom of microdose-ui.js)
+   ========================================================= */
+
+(function athleteDetailDrawerPatch() {
+  function qs(sel, root=document){ return root.querySelector(sel); }
+  function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+
+  function findDrawer() {
+    // Try a few likely IDs/classes without requiring HTML changes
+    return (
+      qs('#athleteDetail') ||
+      qs('#athlete-detail') ||
+      qs('.athlete-detail') ||
+      qs('[data-athlete-detail]') ||
+      null
+    );
+  }
+
+  function ensureHiddenDefault(drawer) {
+    if (!drawer) return;
+    // If already controlled elsewhere, don't fight it
+    if (drawer.dataset.drawerInit === '1') return;
+    drawer.dataset.drawerInit = '1';
+
+    // Default state: closed
+    drawer.classList.add('is-closed');
+    drawer.setAttribute('aria-hidden', 'true');
+    drawer.style.display = 'none';
+  }
+
+  function openDrawer(drawer) {
+    if (!drawer) return;
+    drawer.style.display = '';
+    drawer.classList.remove('is-closed');
+    drawer.classList.add('is-open');
+    drawer.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeDrawer(drawer) {
+    if (!drawer) return;
+    drawer.classList.remove('is-open');
+    drawer.classList.add('is-closed');
+    drawer.setAttribute('aria-hidden', 'true');
+    drawer.style.display = 'none';
+  }
+
+  function injectStyle() {
+    if (document.getElementById('athlete-detail-style')) return;
+    const s = document.createElement('style');
+    s.id = 'athlete-detail-style';
+    s.textContent = `
+      /* Works even if CSS is missing */
+      .athlete-detail.is-closed { display:none !important; }
+      .athlete-detail.is-open { display:block; }
+    `;
+    document.head.appendChild(s);
+  }
+
+  function wireClose(drawer) {
+    // Close button: prefer explicit close button, otherwise find the ✕ button near the header
+    const closeBtn =
+      qs('[data-close]', drawer) ||
+      qs('.close', drawer) ||
+      qsa('button', drawer).find(b => (b.textContent || '').trim() === '✕') ||
+      null;
+
+    if (closeBtn && !closeBtn.dataset.boundClose) {
+      closeBtn.dataset.boundClose = '1';
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeDrawer(drawer);
+      });
+    }
+
+    // Optional: click outside to close (only if it is positioned like a drawer/overlay)
+    document.addEventListener('click', (e) => {
+      if (!drawer.classList.contains('is-open')) return;
+      const clickInside = drawer.contains(e.target);
+      const opener = e.target.closest?.('[data-open-athlete-detail]');
+      if (!clickInside && !opener) closeDrawer(drawer);
+    });
+  }
+
+  function wireOpen(drawer) {
+    // MVP: open when player is selected (you can tighten this later)
+    const playerSel = document.getElementById('playerSelect');
+    if (playerSel && !playerSel.dataset.boundOpenDrawer) {
+      playerSel.dataset.boundOpenDrawer = '1';
+      playerSel.addEventListener('change', () => {
+        // only open if a real player is selected (avoid placeholder)
+        const v = (playerSel.value || '').trim();
+        if (!v || v.toLowerCase().includes('veldu')) return;
+        openDrawer(drawer);
+      });
+    }
+
+    // Prepared hook for roster cards / monitoring rows:
+    // Add data-open-athlete-detail to any element you want to open the drawer.
+    document.addEventListener('click', (e) => {
+      const opener = e.target.closest?.('[data-open-athlete-detail]');
+      if (!opener) return;
+      e.preventDefault();
+      openDrawer(drawer);
+    });
+  }
+
+  function init() {
+    injectStyle();
+    const drawer = findDrawer();
+    if (!drawer) return;
+
+    // Tag it so our CSS selector works even if HTML lacks a class
+    if (!drawer.classList.contains('athlete-detail')) drawer.classList.add('athlete-detail');
+
+    ensureHiddenDefault(drawer);
+    wireClose(drawer);
+    wireOpen(drawer);
+
+    // If page loads with it visible, force-close once
+    closeDrawer(drawer);
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
