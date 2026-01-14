@@ -4444,7 +4444,26 @@ document.addEventListener('DOMContentLoaded', () => {
   setStrengthDaysFromLastDate();
   document.getElementById('playerSelect')?.addEventListener('change', setStrengthDaysFromLastDate);
 });
-// ===== Trigger 3: Auto-set "last strength date" from week/day selections =====
+  // ===== Trigger 3: Auto-set "last strength date" from week/day selections =====
+
+  function todayISO() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function currentWeekMondayISO() {
+    const d = new Date();
+    const day = d.getDay(); // 0=Sun..6=Sat
+    const diffToMonday = (day === 0 ? -6 : 1) - day;
+    d.setDate(d.getDate() + diffToMonday);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function addDaysISO(iso, days) {
+    const d = new Date(iso + 'T00:00:00');
+    d.setDate(d.getDate() + Number(days || 0));
+    return d.toISOString().slice(0, 10);
+  }
+
 
 // TODO: set this to the real ID of your STYRK residual input:
 const strengthDaysInputId = 'strengthDaysInput'; // <-- change to your actual ID
