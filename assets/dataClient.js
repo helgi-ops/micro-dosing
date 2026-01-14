@@ -13,6 +13,18 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 window.supabase = supabase;
 
+// Handle magic-link landing early so session is stored and hash cleared
+if (location.hash && location.hash.includes("access_token=")) {
+  (async () => {
+    try {
+      await supabase.auth.getSession();
+    } catch (_) {}
+    try {
+      history.replaceState({}, document.title, location.pathname + location.search);
+    } catch (_) {}
+  })();
+}
+
 export const api = {
   async getSession() {
     const { data, error } = await supabase.auth.getSession();
