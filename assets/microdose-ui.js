@@ -4,6 +4,60 @@
     (typeof window !== "undefined" && (window.supabase || window.__supabase || window.sb || window.supabaseClient)) || null;
   if (!supabaseClient) console.warn("[auth] window.supabase missing — check script order and type=module");
   const el = (id) => document.getElementById(id);
+  const DAYS = ['Mán','Þri','Mið','Fim','Fös','Lau','Sun'];
+  let weekState = {};
+
+  function normalizeWeekState(ws = {}) {
+    const out = {};
+    DAYS.forEach(d => {
+      const src = ws[d] || {};
+      out[d] = {
+        dayType: src.dayType || '',
+        load: src.load || '',
+        exposure: src.exposure || ''
+      };
+    });
+    return out;
+  }
+
+  function mapDayTypeToScheduleValue(dayType) {
+    const t = (dayType || '').toLowerCase();
+    if (t.includes('leik')) return 'game';
+    if (t.includes('frí') || t.includes('frí') || t.includes('endur')) return 'off';
+    if (t.includes('tækni')) return 'skill_session';
+    if (t.includes('ferð')) return 'off';
+    return 'practice';
+  }
+
+  function mapScheduleValueToDayType(val) {
+    const v = (val || '').toLowerCase();
+    if (v === 'game') return 'Leikur';
+    if (v === 'off') return 'Frí';
+    if (v === 'skill_session') return 'Tækni';
+    if (v === 'travel') return 'Ferð';
+    return 'Æfing';
+  }
+
+  function getWeekStateKey() {
+    const team = localStorage.getItem('selected_team_id') || localStorage.getItem('selectedTeamId') || 'team';
+    const player = (document.getElementById('playerSelect')?.value || 'default').replace(/\s+/g, '-');
+    return `weekState_v1_${team}_${player}`;
+  }
+
+  function saveWeekState(ws) {
+    try { localStorage.setItem(getWeekStateKey(), JSON.stringify(ws)); } catch (_) {}
+  }
+
+  function loadWeekState() {
+    try {
+      const raw = localStorage.getItem(getWeekStateKey());
+      if (!raw) return normalizeWeekState({});
+      const parsed = JSON.parse(raw);
+      return normalizeWeekState(parsed);
+    } catch (_) {
+      return normalizeWeekState({});
+    }
+  }
 
   async function renderAuthStatus() {
     const line = el("authStatusLine");
@@ -135,6 +189,111 @@
 
   window.showAthleteDetail = showAthleteDetail;
   window.hideAthleteDetail = hideAthleteDetail;
+
+  // Sync player dropdown when roster updates
+  window.addEventListener('players:updated', (ev) => {
+    const players = ev?.detail?.players || [];
+    const sel = document.getElementById('playerSelect');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '';
+    const addOpt = (val, text) => {
+      const o = document.createElement('option');
+      o.value = val; o.textContent = text;
+      sel.appendChild(o);
+    };
+    addOpt('', 'Veldu leikmann');
+    players.forEach(p => {
+      const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.name || 'Nafnlaust';
+      addOpt(p.id, name);
+    });
+    addOpt('Custom', 'Skrá handvirkt');
+    if (current && players.some(p => String(p.id) === current)) {
+      sel.value = current;
+    } else {
+      sel.value = '';
+    }
+    sel.dispatchEvent(new Event('change', { bubbles:true }));
+    // reload weekState for new player context
+    weekState = loadWeekState();
+    applyWeekStateToWeekBuilder(weekState);
+    applyWeekStateToMicrodoseGrid(weekState);
+    renderWeekCards();
+  });
+
+  // Week state sync helpers
+  function readWeekStateFromWeekBuilder() {
+    const ws = {};
+    document.querySelectorAll('.week-builder-grid .wb-card[data-day]').forEach(card => {
+      const day = card.getAttribute('data-day');
+      const dayType = card.querySelector('[data-field="dayType"]')?.value || '';
+      const load = card.querySelector('[data-field="load"]')?.value || '';
+      const exposure = card.querySelector('[data-field="exposure"]')?.value || '';
+      ws[day] = { dayType, load, exposure };
+    });
+    return normalizeWeekState(ws);
+  }
+
+  function applyWeekStateToWeekBuilder(ws) {
+    const state = normalizeWeekState(ws);
+    document.querySelectorAll('.week-builder-grid .wb-card[data-day]').forEach(card => {
+      const day = card.getAttribute('data-day');
+      const s = state[day] || {};
+      const dayTypeSel = card.querySelector('[data-field="dayType"]');
+      const loadSel = card.querySelector('[data-field="load"]');
+      const expSel = card.querySelector('[data-field="exposure"]');
+      if (dayTypeSel) dayTypeSel.value = s.dayType || '';
+      if (loadSel) loadSel.value = s.load || '';
+      if (expSel) expSel.value = s.exposure || '';
+    });
+  }
+
+  function readWeekStateFromMicrodoseGrid() {
+    const ws = {};
+    DAYS.forEach((d, idx) => {
+      const sched = document.getElementById(`week-plan-${idx}-schedule`);
+      const load = document.getElementById(`week-plan-${idx}-load`);
+      const dayType = mapScheduleValueToDayType(sched?.value || 'practice');
+      ws[d] = { dayType, load: load?.value || '', exposure: '' };
+    });
+    return normalizeWeekState(ws);
+  }
+
+  function applyWeekStateToMicrodoseGrid(ws) {
+    const state = normalizeWeekState(ws);
+    DAYS.forEach((d, idx) => {
+      const sched = document.getElementById(`week-plan-${idx}-schedule`);
+      const load = document.getElementById(`week-plan-${idx}-load`);
+      const s = state[d] || {};
+      if (sched) sched.value = mapDayTypeToScheduleValue(s.dayType || 'Æfing');
+      if (load) load.value = s.load || '';
+    });
+  }
+
+  function syncFromBuilder() {
+    weekState = readWeekStateFromWeekBuilder();
+    saveWeekState(weekState);
+    applyWeekStateToMicrodoseGrid(weekState);
+    renderWeekCards();
+  }
+
+  function syncFromMicrodoseGrid() {
+    weekState = readWeekStateFromMicrodoseGrid();
+    saveWeekState(weekState);
+    applyWeekStateToWeekBuilder(weekState);
+    renderWeekCards();
+  }
+
+  // Bind grid changes
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('.week-builder-grid')?.addEventListener('change', syncFromBuilder);
+    document.getElementById('microdose-week-grid')?.addEventListener('change', syncFromMicrodoseGrid);
+    // initial state load
+    weekState = loadWeekState();
+    applyWeekStateToWeekBuilder(weekState);
+    applyWeekStateToMicrodoseGrid(weekState);
+    renderWeekCards();
+  });
 
   // MICRO-DOSING TEMPLATE LIBRARY
   // UI-only playbook (no logic)
@@ -1087,19 +1246,17 @@ function updateAllResidualsFromWeek() {
   }
 
   function readWeekScheduleFromUI() {
+    const ws = normalizeWeekState(weekState);
     return dayNames.map((name, idx) => {
-      const sched = document.getElementById(`week-plan-${idx}-schedule`);
-      const load = document.getElementById(`week-plan-${idx}-load`);
-      const rawVal = sched?.value || 'practice';
-      let dagskra = 'Æfing';
-      if (rawVal === 'skill_session') dagskra = 'Tækni';
-      else if (rawVal === 'game') dagskra = 'Leikur';
-      else if (rawVal === 'off') dagskra = 'Frí';
+      const d = ws[DAYS[idx]] || {};
+      const dagskra = d.dayType || 'Æfing';
+      const alag = fmt(d.load || 'Miðlungs');
+      const type = mapDayTypeToScheduleValue(dagskra);
       return {
         dagur: name,
         dagskra,
-        alag: fmt(load?.value || 'Miðlungs'),
-        type: rawVal === 'basketball_practice' ? 'basketball_practice' : rawVal
+        alag,
+        type
       };
     });
   }
@@ -1113,6 +1270,16 @@ function updateAllResidualsFromWeek() {
     }
     if (weekPanel.output) {
       weekPanel.output.textContent = '';
+    }
+    const ws = normalizeWeekState(weekState);
+    const incomplete = DAYS.some(d => !ws[d].dayType || !ws[d].load);
+    if (incomplete) {
+      if (weekPanel.output) {
+        weekPanel.output.innerHTML = '<div class="week-error">Vantar dagstegund/álag fyrir alla daga.</div>';
+      }
+      weekPanel.run.disabled = false;
+      weekPanel.run.textContent = 'Búa til vikuplan';
+      return;
     }
     const schedule = readWeekScheduleFromUI();
     // Always show the selected schedule immediately so user gets feedback, even offline
@@ -1553,6 +1720,11 @@ function updateAllResidualsFromWeek() {
     bindDomRefs();
 
     try {
+      // initial load of week state into grids
+      weekState = loadWeekState();
+      applyWeekStateToWeekBuilder(weekState);
+      applyWeekStateToMicrodoseGrid(weekState);
+      renderWeekCards();
       renderAuthStatus();
       ensureWeekCards();
       updateAthleteHint();
@@ -1625,6 +1797,11 @@ function updateAllResidualsFromWeek() {
     window.addEventListener("team:changed", async () => {
       await renderAuthStatus();
       hideAthleteDetail();
+      weekState = normalizeWeekState({});
+      applyWeekStateToWeekBuilder(weekState);
+      applyWeekStateToMicrodoseGrid(weekState);
+      renderWeekCards();
+      saveWeekState(weekState);
     });
   });
 

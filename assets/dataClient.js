@@ -56,11 +56,21 @@ export const api = {
   },
 
   async createPlayer(teamId, payload) {
+    // Accept { name } or { first_name, last_name }
+    const full = (payload.name || '').trim();
+    let first = payload.first_name || '';
+    let last = payload.last_name || '';
+    if (full && !(first || last)) {
+      const parts = full.split(/\s+/);
+      first = parts.shift() || '';
+      last = parts.join(' ');
+    }
     const row = {
       team_id: teamId,
-      first_name: payload.first_name,
-      last_name: payload.last_name,
+      first_name: first,
+      last_name: last,
       position: payload.position || null,
+      note: payload.note || null,
       status: payload.status || "active",
     };
     const { data, error } = await supabase
@@ -70,6 +80,15 @@ export const api = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  async deletePlayer(teamId, playerId) {
+    const { error } = await supabase
+      .from("players")
+      .delete()
+      .eq("team_id", teamId)
+      .eq("id", playerId);
+    if (error) throw error;
   }
 };
 

@@ -5,8 +5,7 @@ const IDS = {
   hook: "rosterHooks",      // UI á að fara hingað (Roster view)
   status: "rosterStatus",
   list: "rosterPlayerList",
-  first: "playerFirstName",
-  last: "playerLastName",
+  name: "playerName",
   pos: "playerPosition",
   btn: "addPlayerBtn",
   authHint: "authRequiredHint"
@@ -31,10 +30,8 @@ function ensureRosterUI() {
   host.innerHTML = `
     <section class="roster-add-player">
       <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:0 0 10px;">
-        <input id="${IDS.first}" placeholder="Fornafn"
-          style="padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:160px;" />
-        <input id="${IDS.last}" placeholder="Eftirnafn"
-          style="padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:160px;" />
+        <input id="${IDS.name}" placeholder="Nafn leikmanns"
+          style="padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:200px;" />
         <input id="${IDS.pos}" placeholder="Staða (val)"
           style="padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:140px;" />
         <button id="${IDS.btn}" style="padding:10px 14px; border-radius:10px;">Bæta við leikmanni</button>
@@ -69,9 +66,12 @@ function renderPlayers(players) {
     const name = `${p.first_name} ${p.last_name}`.trim();
     const pos = p.position ? ` • ${p.position}` : "";
     return `
-      <div class="roster-player" data-player-id="${p.id}" style="padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10); cursor:pointer;">
-        <div style="font-weight:600;">${name}</div>
-        <div style="opacity:.75; font-size:.9rem;">${pos || "&nbsp;"}</div>
+      <div class="roster-player" data-player-id="${p.id}" style="padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10); cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div>
+          <div style="font-weight:600;">${name}</div>
+          <div style="opacity:.75; font-size:.9rem;">${pos || "&nbsp;"}</div>
+        </div>
+        <button type="button" class="ghost-btn small-btn roster-delete" data-player-id="${p.id}">✕</button>
       </div>
     `;
   }).join("");
@@ -81,6 +81,16 @@ function renderPlayers(players) {
     row.addEventListener('click', () => {
       const pid = row.getAttribute('data-player-id');
       if (window.showAthleteDetail) window.showAthleteDetail(pid);
+    });
+  });
+
+  // Delete buttons
+  list.querySelectorAll('.roster-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const pid = btn.getAttribute('data-player-id');
+      if (!pid) return;
+      await deletePlayerSafe(getTeamId(), pid);
     });
   });
 }
@@ -111,6 +121,7 @@ async function loadPlayers(teamId) {
     status.textContent = `Leikmenn: ${players.length}`;
     renderPlayers(players);
     updateAddState(signedIn, teamId);
+    window.dispatchEvent(new CustomEvent('players:updated', { detail: { teamId, players } }));
   } catch (e) {
     const msg = String(e?.message || e);
     if (msg.includes("aborted") || msg.includes("AbortError")) return;
@@ -129,18 +140,16 @@ async function addPlayer(teamId) {
 
   if (!teamId) return (status.textContent = "Veldu lið (efst) fyrst.");
 
-  const first = (byId(IDS.first)?.value || "").trim();
-  const last  = (byId(IDS.last)?.value || "").trim();
+  const name = (byId(IDS.name)?.value || "").trim();
   const pos   = (byId(IDS.pos)?.value || "").trim();
 
-  if (!first || !last) return (status.textContent = "Vantar fornafn og eftirnafn.");
+  if (!name) return (status.textContent = "Vantar nafn leikmanns.");
 
   try {
     status.textContent = "Bæti við leikmanni…";
-    await api.createPlayer(teamId, { first_name: first, last_name: last, position: pos });
+    await api.createPlayer(teamId, { name, position: pos });
 
-    byId(IDS.first).value = "";
-    byId(IDS.last).value = "";
+    byId(IDS.name).value = "";
     byId(IDS.pos).value = "";
 
     await loadPlayers(teamId);
@@ -148,6 +157,23 @@ async function addPlayer(teamId) {
   } catch (e) {
     console.error(e);
     status.textContent = "Villa við að bæta við leikmanni: " + (e?.message || e);
+  }
+}
+
+async function deletePlayerSafe(teamId, playerId){
+  const status = byId(IDS.status);
+  if (!status) return;
+  if (!(await isSignedIn())) return (status.textContent = "Þarft að vera innskráður.");
+  if (!teamId || !playerId) return;
+  try{
+    await api.deletePlayer(teamId, playerId);
+    status.textContent = "Leikmaður eyddur.";
+    await loadPlayers(teamId);
+  } catch(e){
+    const msg = String(e?.message || e);
+    if (msg.includes("aborted") || msg.includes("AbortError")) return;
+    console.error(e);
+    status.textContent = "Gat ekki eytt leikmanni: " + msg;
   }
 }
 
