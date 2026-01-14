@@ -1,4 +1,50 @@
 (() => {
+  // ---------- Auth status helper ----------
+  const supabaseClient = (typeof window !== 'undefined' && (window.__supabase || window.supabase)) || null;
+  function el(id){ return document.getElementById(id); }
+
+  async function renderAuthStatus() {
+    const line = el("authStatusLine");
+    const teamLine = el("teamStatusLine");
+    const signOutBtn = el("signOutBtn");
+    if (!line || !teamLine || !supabaseClient) return;
+
+    // Auth
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const user = session?.user;
+      if (user) {
+        const email = user.email || "(óþekkt netfang)";
+        line.textContent = `Innskráður sem: ${email}`;
+        if (signOutBtn) signOutBtn.style.display = "inline-flex";
+      } else {
+        line.textContent = "Ekki innskráður";
+        if (signOutBtn) signOutBtn.style.display = "none";
+      }
+    } catch (e) {
+      line.textContent = "Auth villa: " + (e?.message || e);
+      if (signOutBtn) signOutBtn.style.display = "none";
+    }
+
+    // Team
+    const teamId =
+      window.currentTeamId ||
+      window.__selectedTeamId ||
+      localStorage.getItem("selectedTeamId") ||
+      localStorage.getItem("selected_team_id") ||
+      "";
+    teamLine.textContent = teamId ? `Lið: ${teamId}` : "Lið: —";
+
+    // Sign out
+    if (signOutBtn && !signOutBtn.dataset.bound) {
+      signOutBtn.dataset.bound = "1";
+      signOutBtn.addEventListener("click", async () => {
+        try { await supabaseClient.auth.signOut(); } catch (_) {}
+        await renderAuthStatus();
+      });
+    }
+  }
+
   // ===============================
   // MICRO-DOSING TEMPLATE LIBRARY
   // UI-only playbook (no logic)
@@ -1417,6 +1463,7 @@ function updateAllResidualsFromWeek() {
     bindDomRefs();
 
     try {
+      renderAuthStatus();
       ensureWeekCards();
       updateAthleteHint();
       autofillResidualInputs();
@@ -1474,6 +1521,20 @@ function updateAllResidualsFromWeek() {
   } else {
     initMicrodoseUI();
   }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    await renderAuthStatus();
+
+    if (supabaseClient && supabaseClient.auth?.onAuthStateChange) {
+      supabaseClient.auth.onAuthStateChange(async () => {
+        await renderAuthStatus();
+      });
+    }
+
+    window.addEventListener("team:changed", async () => {
+      await renderAuthStatus();
+    });
+  });
 
   window.microdoseUI = { runDayPlan, runWeekPlan, applyDayToPanel };
 })();
