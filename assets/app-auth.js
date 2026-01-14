@@ -136,23 +136,35 @@ async function loadTeams() {
       return;
     }
 
+    if (el("authBoxTeamStatus")) el("authBoxTeamStatus").textContent = "Hleð liðum…";
+
     const teams = await api.getTeams();
-    const selected = localStorage.getItem("selectedTeamId") || "";
+    let selected = localStorage.getItem("selectedTeamId") || "";
+    if (!selected && teams.length) {
+      selected = teams[0].id;
+    }
     el("authBoxTeamSelect").innerHTML =
       `<option value="">— Veldu lið —</option>` +
       teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
 
     el("authBoxTeamSelect").value = selected || "";
     window.__selectedTeamId = selected || "";
-    el("authBoxTeamStatus").textContent = selected ? "Loaded." : "Engin lið (RLS?)";
+    window.currentTeamId = selected || "";
+    if (el("authBoxTeamStatus")) {
+      el("authBoxTeamStatus").textContent = teams.length ? "Lið hlaðin." : "Engin lið (RLS?)";
+    }
     const topSel = document.getElementById("teamSelect");
     if (topSel) {
       topSel.innerHTML = el("authBoxTeamSelect").innerHTML;
       topSel.value = el("authBoxTeamSelect").value;
     }
-    if (selected) {
-      window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: selected } }));
-    }
+    // Persist selection if chosen/auto-chosen
+    try {
+      localStorage.setItem("selectedTeamId", selected || "");
+      localStorage.setItem("selected_team_id", selected || "");
+    } catch (_) {}
+    // Always broadcast (empty allowed)
+    window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: selected || "" } }));
   } catch (e) {
     const msg = String(e?.message || e);
     if (msg.includes("aborted") || msg.includes("AbortError")) return;
