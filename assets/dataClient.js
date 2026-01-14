@@ -11,6 +11,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     detectSessionInUrl: true,
   },
 });
+window.supabase = supabase;
 
 export const api = {
   async getSession() {

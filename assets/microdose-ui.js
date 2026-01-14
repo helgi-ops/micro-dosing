@@ -5297,25 +5297,28 @@ function renderWeekCards(resultOverride, scheduleOverride) {
 // =========================
 // Magic link landing + auth status refresh
 // =========================
+const supabaseGlobal = (typeof window !== 'undefined' && (window.supabase || window.__supabase)) || null;
+function el(id) { return document.getElementById(id); }
+
 async function handleMagicLinkLanding() {
+  if (!supabaseGlobal) return;
   if (location.hash && location.hash.includes("access_token=")) {
     await new Promise(r => setTimeout(r, 50));
     try {
-      await supabase.auth.getSession();
+      await supabaseGlobal.auth.getSession();
     } catch (_) {}
     history.replaceState({}, document.title, location.pathname + location.search);
   }
 }
 
-function el(id) { return document.getElementById(id); }
-
 async function renderAuthStatus() {
+  if (!supabaseGlobal) return;
   const line = el("authStatusLine");
   const teamLine = el("teamStatusLine");
   const signOutBtn = el("signOutBtn");
   if (!line || !teamLine) return;
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await supabaseGlobal.auth.getSession();
   const user = session?.user;
 
   if (user) {
@@ -5337,7 +5340,7 @@ async function renderAuthStatus() {
   if (signOutBtn && !signOutBtn.dataset.bound) {
     signOutBtn.dataset.bound = "1";
     signOutBtn.addEventListener("click", async () => {
-      await supabase.auth.signOut();
+      await supabaseGlobal.auth.signOut();
       await renderAuthStatus();
     });
   }
@@ -5349,9 +5352,11 @@ async function renderAuthStatus() {
     await settleAuthFromUrl();
     await renderAuthStatus();
 
-    supabase.auth.onAuthStateChange(async () => {
-      await renderAuthStatus();
-    });
+    if (supabaseGlobal?.auth?.onAuthStateChange) {
+      supabaseGlobal.auth.onAuthStateChange(async () => {
+        await renderAuthStatus();
+      });
+    }
 
     window.addEventListener("team:changed", async () => {
       await renderAuthStatus();
@@ -5361,9 +5366,10 @@ async function renderAuthStatus() {
 
 // Magic-link settle helper (duplicate-safe)
 async function settleAuthFromUrl() {
+  if (!supabaseGlobal) return;
   if (location.hash && location.hash.includes("access_token=")) {
     await new Promise(r => setTimeout(r, 80));
-    try { await supabase.auth.getSession(); } catch (_) {}
+    try { await supabaseGlobal.auth.getSession(); } catch (_) {}
     history.replaceState({}, document.title, location.pathname + location.search);
   }
 }
