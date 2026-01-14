@@ -1,7 +1,8 @@
 (() => {
   // ---------- Auth status helper ----------
-  const supabaseClient = (typeof window !== 'undefined' && (window.__supabase || window.supabase)) || null;
-  function el(id){ return document.getElementById(id); }
+ const supabaseClient =
+  (typeof window !== "undefined" && (window.supabase || window.sb || window.supabaseClient)) || null;
+{ return document.getElementById(id); }
 
   async function renderAuthStatus() {
     const line = el("authStatusLine");
