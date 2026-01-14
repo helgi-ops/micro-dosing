@@ -74,7 +74,19 @@
         if (signOutBtn) signOutBtn.style.display = "inline-flex";
       } else {
         line.textContent = "Ekki innskráður";
+        teamLine.textContent = "Lið: —";
         if (signOutBtn) signOutBtn.style.display = "none";
+        try {
+          localStorage.removeItem("selectedTeamId");
+          localStorage.removeItem("selected_team_id");
+        } catch (_) {}
+        window.__selectedTeamId = "";
+        window.currentTeamId = "";
+        const authSel = document.getElementById("authBoxTeamSelect");
+        const topSel = document.getElementById("teamSelect");
+        if (authSel) authSel.value = "";
+        if (topSel) topSel.value = "";
+        return;
       }
     } catch (e) {
       const msg = String(e?.message || e);

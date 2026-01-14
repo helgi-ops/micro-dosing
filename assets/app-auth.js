@@ -3,6 +3,28 @@ import { api, supabase } from "./dataClient.js";
 
 function el(id) { return document.getElementById(id); }
 
+function resetTeamSelection() {
+  try {
+    localStorage.removeItem("selectedTeamId");
+    localStorage.removeItem("selected_team_id");
+  } catch (_) {}
+  window.__selectedTeamId = "";
+  window.currentTeamId = "";
+
+  const authSel = el("authBoxTeamSelect");
+  const topSel = document.getElementById("teamSelect");
+  const placeholder = `<option value="">— Veldu lið —</option>`;
+  if (authSel) {
+    authSel.innerHTML = placeholder;
+    authSel.value = "";
+    el("authBoxTeamStatus") && (el("authBoxTeamStatus").textContent = "");
+  }
+  if (topSel) {
+    topSel.innerHTML = placeholder;
+    topSel.value = "";
+  }
+}
+
 function ensureAuthUI(hostEl) {
   // Býr til lítið auth box ef það er ekki til
   const old = document.getElementById("authBox");
@@ -102,6 +124,7 @@ async function updateAuthStatus() {
   const session = await api.getSession();
   const user = session?.user;
   el("authBoxStatus").textContent = user ? `Signed in: ${user.email}` : "Not signed in.";
+  if (!user) resetTeamSelection();
 }
 
 async function loadTeams() {
@@ -109,9 +132,7 @@ async function loadTeams() {
     await updateAuthStatus();
     const session = await api.getSession();
     if (!session?.user) {
-      // ekki loggaður inn -> engin teams
-      el("authBoxTeamSelect").innerHTML = `<option value="">— Veldu lið —</option>`;
-      el("authBoxTeamStatus").textContent = "";
+      resetTeamSelection();
       return;
     }
 
