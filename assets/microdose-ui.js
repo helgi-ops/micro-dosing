@@ -5293,3 +5293,67 @@ function renderWeekCards(resultOverride, scheduleOverride) {
     bind();
   }
 })();
+
+// =========================
+// Magic link landing + auth status refresh
+// =========================
+async function handleMagicLinkLanding() {
+  if (location.hash && location.hash.includes("access_token=")) {
+    await new Promise(r => setTimeout(r, 50));
+    try {
+      await supabase.auth.getSession();
+    } catch (_) {}
+    history.replaceState({}, document.title, location.pathname + location.search);
+  }
+}
+
+function el(id) { return document.getElementById(id); }
+
+async function renderAuthStatus() {
+  const line = el("authStatusLine");
+  const teamLine = el("teamStatusLine");
+  const signOutBtn = el("signOutBtn");
+  if (!line || !teamLine) return;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
+
+  if (user) {
+    const email = user.email || "(óþekkt netfang)";
+    line.textContent = `Innskráður sem: ${email}`;
+    if (signOutBtn) signOutBtn.style.display = "inline-flex";
+  } else {
+    line.textContent = "Ekki innskráður";
+    if (signOutBtn) signOutBtn.style.display = "none";
+  }
+
+  const teamId =
+    window.currentTeamId ||
+    localStorage.getItem("selected_team_id") ||
+    "";
+
+  teamLine.textContent = teamId ? `Lið: ${teamId}` : "Lið: —";
+
+  if (signOutBtn && !signOutBtn.dataset.bound) {
+    signOutBtn.dataset.bound = "1";
+    signOutBtn.addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      await renderAuthStatus();
+    });
+  }
+}
+
+(function initAuthStatusUI() {
+  document.addEventListener("DOMContentLoaded", async () => {
+    await handleMagicLinkLanding();
+    await renderAuthStatus();
+
+    supabase.auth.onAuthStateChange(async () => {
+      await renderAuthStatus();
+    });
+
+    window.addEventListener("team:changed", async () => {
+      await renderAuthStatus();
+    });
+  });
+})();
