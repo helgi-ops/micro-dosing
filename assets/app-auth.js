@@ -139,10 +139,15 @@ async function loadTeams() {
     if (el("authBoxTeamStatus")) el("authBoxTeamStatus").textContent = "Hleð liðum…";
 
     const teams = await api.getTeams();
-    let selected = localStorage.getItem("selectedTeamId") || "";
-    if (!selected && teams.length) {
-      selected = teams[0].id;
-    }
+    const preferredId = "b0748c6f-0b22-4043-8078-8dfd5f13a053";
+    const stored = localStorage.getItem("selectedTeamId") || "";
+    const hasPreferred = teams.some(t => t.id === preferredId);
+    const hasStored = teams.some(t => t.id === stored);
+
+    let selected = "";
+    if (hasPreferred) selected = preferredId;
+    else if (hasStored) selected = stored;
+    else if (teams.length) selected = teams[0].id;
     el("authBoxTeamSelect").innerHTML =
       `<option value="">— Veldu lið —</option>` +
       teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
