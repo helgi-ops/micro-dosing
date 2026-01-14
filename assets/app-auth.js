@@ -103,22 +103,42 @@ async function loadTeams() {
       window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: selected } }));
     }
   } catch (e) {
-    console.error(e);
-    el("teamStatus").textContent = "Teams error: " + (e?.message || e);
+    const msg = String(e?.message || e);
+    if (msg.includes("aborted") || msg.includes("AbortError")) return;
+    console.error("Teams load failed:", e);
+    el("teamStatus").textContent = "Teams error: " + msg;
   }
 }
 
+let teamsLoadInFlight = null;
+async function loadTeamsSafely() {
+  if (teamsLoadInFlight) return teamsLoadInFlight;
+
+  teamsLoadInFlight = (async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await loadTeams();
+    } finally {
+      teamsLoadInFlight = null;
+    }
+  })();
+
+  return teamsLoadInFlight;
+}
+
 // React to auth changes
-supabase.auth.onAuthStateChange(async () => {
-  await loadTeams();
+supabase.auth.onAuthStateChange(async (_event, session) => {
+  if (!session) return;
+  await loadTeamsSafely();
 });
 
 const host = document.getElementById("rosterHooks");
 ensureAuthUI(host);
-if (host) loadTeams();
+if (host) loadTeamsSafely();
 
 // Expose helper so other modules (roster-supabase) can remount after DOM changes
 window.renderAuthBox = function(target){
   ensureAuthUI(target);
-  loadTeams();
+  loadTeamsSafely();
 };

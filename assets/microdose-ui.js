@@ -5346,6 +5346,7 @@ async function renderAuthStatus() {
 (function initAuthStatusUI() {
   document.addEventListener("DOMContentLoaded", async () => {
     await handleMagicLinkLanding();
+    await settleAuthFromUrl();
     await renderAuthStatus();
 
     supabase.auth.onAuthStateChange(async () => {
@@ -5357,3 +5358,12 @@ async function renderAuthStatus() {
     });
   });
 })();
+
+// Magic-link settle helper (duplicate-safe)
+async function settleAuthFromUrl() {
+  if (location.hash && location.hash.includes("access_token=")) {
+    await new Promise(r => setTimeout(r, 80));
+    try { await supabase.auth.getSession(); } catch (_) {}
+    history.replaceState({}, document.title, location.pathname + location.search);
+  }
+}
