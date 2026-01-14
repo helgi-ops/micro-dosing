@@ -138,10 +138,14 @@ async function loadTeams() {
 
     if (el("authBoxTeamStatus")) el("authBoxTeamStatus").textContent = "Hleð liðum…";
 
-    const teams = await api.getTeams();
+    let teams = await api.getTeams();
+    // If no teams returned but we have a preferred id, expose it as placeholder
     const preferredId = "b0748c6f-0b22-4043-8078-8dfd5f13a053";
-    const stored = localStorage.getItem("selectedTeamId") || "";
     const hasPreferred = teams.some(t => t.id === preferredId);
+    if (!teams.length && preferredId) {
+      teams = [{ id: preferredId, name: "Lið" }];
+    }
+    const stored = localStorage.getItem("selectedTeamId") || "";
     const hasStored = teams.some(t => t.id === stored);
 
     let selected = "";
@@ -172,7 +176,10 @@ async function loadTeams() {
     window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: selected || "" } }));
   } catch (e) {
     const msg = String(e?.message || e);
-    if (msg.includes("aborted") || msg.includes("AbortError")) return;
+    if (msg.includes("aborted") || msg.includes("AbortError")) {
+      setTimeout(loadTeamsSafely, 120);
+      return;
+    }
     console.error("Teams load failed:", e);
     el("authBoxTeamStatus").textContent = "Teams error: " + msg;
   }
@@ -202,6 +209,8 @@ const host = document.getElementById("rosterHooks");
 ensureAuthUI(host);
 document.addEventListener("DOMContentLoaded", () => {
   settleAuthFromUrl().then(loadTeamsSafely);
+  // Safety retry after short delay in case session arrives late
+  setTimeout(loadTeamsSafely, 200);
 });
 
 // Expose helper so other modules (roster-supabase) can remount after DOM changes

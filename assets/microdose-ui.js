@@ -93,6 +93,8 @@
       if (msg.toLowerCase().includes("aborted")) {
         line.textContent = "Athuga innskráningu…";
         if (signOutBtn) signOutBtn.style.display = "none";
+        // retry once after small delay
+        setTimeout(renderAuthStatus, 150);
         return;
       }
       line.textContent = "Auth villa: " + (e?.message || e);
