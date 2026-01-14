@@ -4194,47 +4194,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // TODO: set this to the real ID of your STYRK residual input:
 const strengthDaysInputId = 'strengthDaysInput'; // <-- change to your actual ID
 
-function slugify(s) {
-  return (s || 'default').trim().toLowerCase().replace(/\s+/g, '-');
-}
-function playerSlug() {
-  return slugify(document.getElementById('playerSelect')?.value);
-}
-function lastStrengthKey() {
-  return `microdose_last_strength_date_v1_${playerSlug()}`;
-}
-
-// ISO yyyy-mm-dd today
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-// Get Monday of current week (local time)
-function currentWeekMondayISO() {
-  const d = new Date();
-  const day = d.getDay(); // Sun=0..Sat=6
-  const diff = (day === 0 ? -6 : 1) - day; // move to Monday
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().slice(0, 10);
-}
-
-function addDaysISO(iso, days) {
-  const d = new Date(iso + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-function clamp0to21(n) {
-  return Math.max(0, Math.min(21, n));
-}
-
-function daysBetweenISO(fromISO, toISO) {
-  const a = new Date(fromISO + 'T00:00:00');
-  const b = new Date(toISO + 'T00:00:00');
-  return Math.floor((b - a) / (1000 * 60 * 60 * 24));
-}
-
 function isStrengthValue(v) {
   const s = String(v || '').toLowerCase();
   // Matches "styrk", "styrkur", etc. Adjust if you use a specific enum.
