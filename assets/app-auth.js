@@ -70,12 +70,12 @@ if (old) old.remove();
     document.getElementById("authBoxTeamStatus").textContent = v ? "Valið." : "";
     window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: v || "" } }));
     window.dispatchEvent(new Event("team:changed"));
-    const topSel = document.getElementById("teamSelectTopbar");
+    const topSel = document.getElementById("teamSelect");
     if (topSel) topSel.value = v || "";
   });
 
   // Sync from topbar select into auth box
-  const topSel = document.getElementById("teamSelectTopbar");
+  const topSel = document.getElementById("teamSelect");
   if (topSel && !topSel.dataset.bound) {
     topSel.dataset.bound = "1";
     topSel.addEventListener("change", () => {
@@ -115,7 +115,7 @@ async function loadTeams() {
     el("authBoxTeamSelect").value = selected || "";
     window.__selectedTeamId = selected || "";
     el("authBoxTeamStatus").textContent = selected ? "Loaded." : "Engin lið (RLS?)";
-    const topSel = document.getElementById("teamSelectTopbar");
+    const topSel = document.getElementById("teamSelect");
     if (topSel) {
       topSel.innerHTML = el("authBoxTeamSelect").innerHTML;
       topSel.value = el("authBoxTeamSelect").value;
