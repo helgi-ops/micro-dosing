@@ -93,8 +93,16 @@
       if (msg.toLowerCase().includes("aborted")) {
         line.textContent = "Athuga innskráningu…";
         if (signOutBtn) signOutBtn.style.display = "none";
-        // retry once after small delay
-        setTimeout(renderAuthStatus, 150);
+        // Show any stored team id while retrying
+        const storedTeam =
+          window.currentTeamId ||
+          window.__selectedTeamId ||
+          localStorage.getItem("selectedTeamId") ||
+          localStorage.getItem("selected_team_id") ||
+          "";
+        teamLine.textContent = storedTeam ? `Lið: ${storedTeam}` : "Lið: —";
+        // retry after a short delay to resolve the race
+        setTimeout(renderAuthStatus, 250);
         return;
       }
       line.textContent = "Auth villa: " + (e?.message || e);
