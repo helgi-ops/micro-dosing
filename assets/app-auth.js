@@ -146,8 +146,6 @@ async function loadTeamsSafely() {
 
   teamsLoadInFlight = (async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
       await loadTeams();
     } finally {
       teamsLoadInFlight = null;
@@ -159,15 +157,13 @@ async function loadTeamsSafely() {
 
 // React to auth changes
 supabase.auth.onAuthStateChange(async (_event, session) => {
-  if (!session) return;
   await loadTeamsSafely();
 });
 
 const host = document.getElementById("rosterHooks");
 ensureAuthUI(host);
-settleAuthFromUrl().then(() => {
-  if (host) loadTeamsSafely();
-  else loadTeamsSafely();
+document.addEventListener("DOMContentLoaded", () => {
+  settleAuthFromUrl().then(loadTeamsSafely);
 });
 
 // Expose helper so other modules (roster-supabase) can remount after DOM changes
