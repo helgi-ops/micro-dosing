@@ -439,7 +439,7 @@
     <div class="app">
     <div id="supabaseHooks"></div>
 
-    <header class="app-hero no-print panel app-panel" id="panel-hero" hidden>
+    <header class="app-hero no-print panel app-panel" id="panel-hero">
       <div class="app-hero__inner">
         <p class="eyebrow">Microdosing Coach</p>
         <h1>Örskömmtun í þjálfun</h1>
@@ -450,6 +450,28 @@
         </div>
       </div>
     </header>
+
+    <section class="panel roster-panel no-print app-panel" id="panel-roster">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Roster</p>
+          <h2>Liðsheild</h2>
+          <p class="muted">Veldu lið og sjáðu leikmenn eða bættu við nýjum.</p>
+        </div>
+      </div>
+      <!-- Auth status -->
+      <div id="authStatus" class="auth-status" style="margin:10px 0; padding:10px; border:1px solid #e5e7eb; border-radius:10px;">
+        <div style="display:flex; gap:10px; align-items:center; justify-content:space-between;">
+          <div>
+            <div style="font-weight:700;">Aðgangur</div>
+            <div id="authStatusLine" style="opacity:.85;">Athuga innskráningu…</div>
+            <div id="teamStatusLine" style="opacity:.85; margin-top:4px;">Lið: —</div>
+          </div>
+          <button id="signOutBtn" type="button" style="display:none;">Skrá út</button>
+        </div>
+      </div>
+      <div id="rosterHooks"></div>
+    </section>
 
     <section class="panel week-builder-panel no-print app-panel" id="panel-weekBuilder" hidden>
       <div class="panel-head">
