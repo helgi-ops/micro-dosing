@@ -65,6 +65,7 @@ if (old) old.remove();
     try {
       await api.signInWithEmail(email);
       document.getElementById("authBoxStatus").textContent = "Login link sent á email.";
+      await loadTeams();
     } catch (e) {
       console.error(e);
       document.getElementById("authBoxStatus").textContent = "Villa: " + (e?.message || e);
@@ -92,12 +93,12 @@ if (old) old.remove();
     document.getElementById("authBoxTeamStatus").textContent = v ? "Valið." : "";
     window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: v || "" } }));
     window.dispatchEvent(new Event("team:changed"));
-    const topSel = document.getElementById("teamSelect");
+    const topSel = document.getElementById("teamSelectTopbar");
     if (topSel) topSel.value = v || "";
   });
 
   // Sync from topbar select into auth box
-  const topSel = document.getElementById("teamSelect");
+  const topSel = document.getElementById("teamSelectTopbar");
   if (topSel && !topSel.dataset.bound) {
     topSel.dataset.bound = "1";
     topSel.addEventListener("change", () => {
@@ -162,7 +163,7 @@ async function loadTeams() {
     if (el("authBoxTeamStatus")) {
       el("authBoxTeamStatus").textContent = teams.length ? "Lið hlaðin." : "Engin lið (RLS?)";
     }
-    const topSel = document.getElementById("teamSelect");
+    const topSel = document.getElementById("teamSelectTopbar");
     if (topSel) {
       topSel.innerHTML = el("authBoxTeamSelect").innerHTML;
       topSel.value = el("authBoxTeamSelect").value;
