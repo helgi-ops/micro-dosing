@@ -427,19 +427,19 @@
         <span class="sidebar-title">Navigation</span>
       </div>
       <ul class="sidebar-nav">
-        <li class="active"><button type="button"><span class="dot"></span>Roster</button></li>
-        <li><button type="button"><span class="dot"></span>Week Builder</button></li>
-        <li><button type="button"><span class="dot"></span>Rules Library</button></li>
-        <li><button type="button"><span class="dot"></span>Monitoring</button></li>
-        <li><button type="button"><span class="dot"></span>Reports</button></li>
-        <li><button type="button"><span class="dot"></span>Admin</button></li>
+        <li class="active"><button type="button" class="nav-item" data-panel="panel-roster"><span class="dot"></span>Roster</button></li>
+        <li><button type="button" class="nav-item" data-panel="panel-weekBuilder"><span class="dot"></span>Week Builder</button></li>
+        <li><button type="button" class="nav-item" data-panel="panel-rules"><span class="dot"></span>Rules Library</button></li>
+        <li><button type="button" class="nav-item" data-panel="panel-monitoring"><span class="dot"></span>Monitoring</button></li>
+        <li><button type="button" class="nav-item" data-panel="panel-reports"><span class="dot"></span>Reports</button></li>
+        <li><button type="button" class="nav-item" data-panel="panel-admin"><span class="dot"></span>Admin</button></li>
       </ul>
     </nav>
 
     <div class="app">
     <div id="supabaseHooks"></div>
 
-    <header class="app-hero no-print panel">
+    <header class="app-hero no-print panel app-panel" id="panel-hero" hidden>
       <div class="app-hero__inner">
         <p class="eyebrow">Microdosing Coach</p>
         <h1>Örskömmtun í þjálfun</h1>
@@ -451,7 +451,7 @@
       </div>
     </header>
 
-    <section class="panel week-builder-panel no-print" id="weekBuilder">
+    <section class="panel week-builder-panel no-print app-panel" id="panel-weekBuilder" hidden>
       <div class="panel-head">
         <div>
           <p class="eyebrow">Week Builder</p>
@@ -649,7 +649,7 @@
       </div>
     </section>
 
-    <section class="panel monitoring-panel no-print" id="monitoring">
+    <section class="panel monitoring-panel no-print app-panel" id="panel-monitoring" hidden>
       <div class="panel-head">
         <div>
           <p class="eyebrow">Monitoring</p>
@@ -744,111 +744,113 @@
       </div>
     </section>
 
-    <aside class="athlete-drawer no-print" aria-label="Athlete detail drawer">
-      <div class="drawer-head">
-        <div>
-          <p class="eyebrow">Athlete detail</p>
-          <h3>Helgi Jónsson</h3>
-          <p class="muted small">Forward · Green status</p>
+    <div id="athleteDetailPanel" hidden>
+      <aside class="athlete-drawer no-print" aria-label="Athlete detail drawer">
+        <div class="drawer-head">
+          <div>
+            <p class="eyebrow">Athlete detail</p>
+            <h3>Helgi Jónsson</h3>
+            <p class="muted small">Forward · Green status</p>
+          </div>
+          <div class="drawer-actions">
+            <span class="status-light green"></span>
+            <button type="button" class="ghost-btn">✕</button>
+          </div>
         </div>
-        <div class="drawer-actions">
-          <span class="status-light green"></span>
-          <button type="button" class="ghost-btn">✕</button>
-        </div>
-      </div>
 
-      <div class="drawer-tabs">
-        <button class="active" type="button">This Week</button>
-        <button type="button">Check-ins</button>
-        <button type="button">Generated Plans</button>
-        <button type="button">Restrictions</button>
-      </div>
+        <div class="drawer-tabs">
+          <button class="active" type="button">This Week</button>
+          <button type="button">Check-ins</button>
+          <button type="button">Generated Plans</button>
+          <button type="button">Restrictions</button>
+        </div>
 
-      <div class="drawer-section">
-        <p class="eyebrow">This Week</p>
-        <div class="mini-week-grid">
-          <div class="mini-day">
-            <strong>Mán</strong>
-            <div>Æfing · Moderate</div>
-            <div class="mini-tag">MD-1</div>
+        <div class="drawer-section">
+          <p class="eyebrow">This Week</p>
+          <div class="mini-week-grid">
+            <div class="mini-day">
+              <strong>Mán</strong>
+              <div>Æfing · Moderate</div>
+              <div class="mini-tag">MD-1</div>
+            </div>
+            <div class="mini-day">
+              <strong>Þri</strong>
+              <div>Leikur · High</div>
+              <div class="mini-tag">Game</div>
+            </div>
+            <div class="mini-day">
+              <strong>Mið</strong>
+              <div>Endurheimt · Low</div>
+              <div class="mini-tag">MD+1</div>
+            </div>
+            <div class="mini-day">
+              <strong>Fim</strong>
+              <div>Æfing · Moderate</div>
+              <div class="mini-tag muted">Override</div>
+            </div>
+            <div class="mini-day">
+              <strong>Fös</strong>
+              <div>Æfing · Moderate</div>
+            </div>
+            <div class="mini-day">
+              <strong>Lau</strong>
+              <div>Frí · Low</div>
+            </div>
+            <div class="mini-day">
+              <strong>Sun</strong>
+              <div>Æfing · Moderate</div>
+            </div>
           </div>
-          <div class="mini-day">
-            <strong>Þri</strong>
-            <div>Leikur · High</div>
-            <div class="mini-tag">Game</div>
+          <label class="coach-notes">Coach notes
+            <textarea rows="3" placeholder="Áherslur vikunnar, takmarkanir eða leiðbeiningar."></textarea>
+          </label>
+        </div>
+
+        <div class="drawer-section">
+          <p class="eyebrow">Check-ins (last 7–14 days)</p>
+          <div class="checkin-row">
+            <div>12.08 · Readiness 7 · Soreness 1 · Sleep 1</div>
+            <span class="status-light green"></span>
           </div>
-          <div class="mini-day">
-            <strong>Mið</strong>
-            <div>Endurheimt · Low</div>
-            <div class="mini-tag">MD+1</div>
+          <div class="checkin-row">
+            <div>11.08 · Readiness 5 · Soreness 2 · Sleep 2</div>
+            <span class="status-light yellow"></span>
           </div>
-          <div class="mini-day">
-            <strong>Fim</strong>
-            <div>Æfing · Moderate</div>
-            <div class="mini-tag muted">Override</div>
-          </div>
-          <div class="mini-day">
-            <strong>Fös</strong>
-            <div>Æfing · Moderate</div>
-          </div>
-          <div class="mini-day">
-            <strong>Lau</strong>
-            <div>Frí · Low</div>
-          </div>
-          <div class="mini-day">
-            <strong>Sun</strong>
-            <div>Æfing · Moderate</div>
+          <div class="checkin-row">
+            <div>10.08 · Readiness 3 · Soreness 3 · Sleep 2</div>
+            <span class="status-light red"></span>
           </div>
         </div>
-        <label class="coach-notes">Coach notes
-          <textarea rows="3" placeholder="Áherslur vikunnar, takmarkanir eða leiðbeiningar."></textarea>
-        </label>
-      </div>
 
-      <div class="drawer-section">
-        <p class="eyebrow">Check-ins (last 7–14 days)</p>
-        <div class="checkin-row">
-          <div>12.08 · Readiness 7 · Soreness 1 · Sleep 1</div>
-          <span class="status-light green"></span>
+        <div class="drawer-section">
+          <p class="eyebrow">Generated Plans</p>
+          <ul class="plan-list">
+            <li>
+              <div>12.08 · Primer · 12 mín</div>
+              <button type="button" class="ghost-btn small-btn">View</button>
+            </li>
+            <li>
+              <div>11.08 · Maintenance · 16 mín</div>
+              <button type="button" class="ghost-btn small-btn">View</button>
+            </li>
+          </ul>
         </div>
-        <div class="checkin-row">
-          <div>11.08 · Readiness 5 · Soreness 2 · Sleep 2</div>
-          <span class="status-light yellow"></span>
-        </div>
-        <div class="checkin-row">
-          <div>10.08 · Readiness 3 · Soreness 3 · Sleep 2</div>
-          <span class="status-light red"></span>
-        </div>
-      </div>
 
-      <div class="drawer-section">
-        <p class="eyebrow">Generated Plans</p>
-        <ul class="plan-list">
-          <li>
-            <div>12.08 · Primer · 12 mín</div>
-            <button type="button" class="ghost-btn small-btn">View</button>
-          </li>
-          <li>
-            <div>11.08 · Maintenance · 16 mín</div>
-            <button type="button" class="ghost-btn small-btn">View</button>
-          </li>
-        </ul>
-      </div>
-
-      <div class="drawer-section">
-        <p class="eyebrow">Restrictions</p>
-        <div class="chip-row">
-          <span class="chip">No plyo</span>
-          <span class="chip">Upper-only</span>
-          <span class="chip">No overhead</span>
+        <div class="drawer-section">
+          <p class="eyebrow">Restrictions</p>
+          <div class="chip-row">
+            <span class="chip">No plyo</span>
+            <span class="chip">Upper-only</span>
+            <span class="chip">No overhead</span>
+          </div>
+          <label class="coach-notes">Athugasemd
+            <textarea rows="2" placeholder="Ástæða, endurskoðunardagur o.s.frv."></textarea>
+          </label>
         </div>
-        <label class="coach-notes">Athugasemd
-          <textarea rows="2" placeholder="Ástæða, endurskoðunardagur o.s.frv."></textarea>
-        </label>
-      </div>
-    </aside>
+      </aside>
+    </div>
 
-    <section class="panel reports-panel no-print" id="reportsView">
+    <section class="panel reports-panel no-print app-panel" id="panel-reports" hidden>
       <div class="panel-head">
         <div>
           <p class="eyebrow">Reports</p>

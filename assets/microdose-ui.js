@@ -1,8 +1,9 @@
 (() => {
-  // ---------- Auth status helper ----------
- const supabaseClient =
-  (typeof window !== "undefined" && (window.supabase || window.sb || window.supabaseClient)) || null;
-{ return document.getElementById(id); }
+  // ---------- Supabase bridge & helpers ----------
+  const supabaseClient =
+    (typeof window !== "undefined" && (window.supabase || window.__supabase || window.sb || window.supabaseClient)) || null;
+  if (!supabaseClient) console.warn("[auth] window.supabase missing — check script order and type=module");
+  const el = (id) => document.getElementById(id);
 
   async function renderAuthStatus() {
     const line = el("authStatusLine");
@@ -10,7 +11,6 @@
     const signOutBtn = el("signOutBtn");
     if (!line || !teamLine || !supabaseClient) return;
 
-    // Auth
     try {
       const { data: { session } } = await supabaseClient.auth.getSession();
       const user = session?.user;
@@ -27,7 +27,6 @@
       if (signOutBtn) signOutBtn.style.display = "none";
     }
 
-    // Team
     const teamId =
       window.currentTeamId ||
       window.__selectedTeamId ||
@@ -36,7 +35,6 @@
       "";
     teamLine.textContent = teamId ? `Lið: ${teamId}` : "Lið: —";
 
-    // Sign out
     if (signOutBtn && !signOutBtn.dataset.bound) {
       signOutBtn.dataset.bound = "1";
       signOutBtn.addEventListener("click", async () => {
@@ -46,7 +44,98 @@
     }
   }
 
+  async function handleMagicLinkLanding() {
+    if (!supabaseClient) return;
+    if (location.hash && location.hash.includes("access_token=")) {
+      await new Promise(r => setTimeout(r, 50));
+      try { await supabaseClient.auth.getSession(); } catch (_) {}
+      history.replaceState({}, document.title, location.pathname + location.search);
+    }
+  }
+
+  async function settleAuthFromUrl() {
+    if (!supabaseClient) return;
+    if (location.hash && location.hash.includes("access_token=")) {
+      await new Promise(r => setTimeout(r, 80));
+      try { await supabaseClient.auth.getSession(); } catch (_) {}
+      history.replaceState({}, document.title, location.pathname + location.search);
+    }
+  }
+
   // ===============================
+  // Navigation binding (panel switcher)
+  // ===============================
+  function initNavigation() {
+    const nav = document.querySelector(".nav, #nav, [data-nav]") || document.querySelector(".navigation");
+    if (!nav) {
+      console.warn("[nav] nav container not found");
+      return;
+    }
+    if (nav.dataset.bound === "1") return;
+    nav.dataset.bound = "1";
+
+    const panels = Array.from(document.querySelectorAll(".app-panel"));
+    if (!panels.length) console.warn("[nav] No panels found (.app-panel)");
+
+    function showPanel(panelId) {
+      const target = document.getElementById(panelId);
+      if (!target) {
+        console.warn("[nav] Panel not found:", panelId);
+        return;
+      }
+      panels.forEach(p => p.hidden = true);
+      target.hidden = false;
+
+      const items = nav.querySelectorAll(".nav-item, [data-panel], a[href^='#']");
+      items.forEach(i => i.classList.remove("active"));
+      const active =
+        nav.querySelector(`[data-panel="${panelId}"]`) ||
+        nav.querySelector(`a[href="#${panelId}"]`);
+      if (active) active.classList.add("active");
+
+      try { localStorage.setItem("active_panel_id", panelId); } catch {}
+    }
+
+    nav.addEventListener("click", (e) => {
+      const item =
+        e.target.closest("[data-panel]") ||
+        e.target.closest("a[href^='#']") ||
+        e.target.closest(".nav-item");
+      if (!item) return;
+      const panelId =
+        item.getAttribute("data-panel") ||
+        (item.getAttribute("href") ? item.getAttribute("href").slice(1) : null);
+      if (!panelId) return;
+      e.preventDefault();
+      e.stopPropagation();
+      showPanel(panelId);
+    });
+
+    const saved = (() => { try { return localStorage.getItem("active_panel_id"); } catch { return null; } })();
+    const defaultPanel = saved || "panel-roster";
+    showPanel(defaultPanel);
+  }
+
+  // -----------------------------
+  // Athlete selection state
+  // -----------------------------
+  function showAthleteDetail(playerId) {
+    const panel = document.getElementById("athleteDetailPanel");
+    if (!panel) return;
+    window.selectedPlayerId = playerId;
+    panel.hidden = false;
+  }
+
+  function hideAthleteDetail() {
+    const panel = document.getElementById("athleteDetailPanel");
+    if (!panel) return;
+    window.selectedPlayerId = null;
+    panel.hidden = true;
+  }
+
+  window.showAthleteDetail = showAthleteDetail;
+  window.hideAthleteDetail = hideAthleteDetail;
+
   // MICRO-DOSING TEMPLATE LIBRARY
   // UI-only playbook (no logic)
   // ===============================
@@ -1525,6 +1614,7 @@ function updateAllResidualsFromWeek() {
 
   document.addEventListener("DOMContentLoaded", async () => {
     await renderAuthStatus();
+    try { initNavigation(); } catch (e) { console.error("[nav] init failed", e); }
 
     if (supabaseClient && supabaseClient.auth?.onAuthStateChange) {
       supabaseClient.auth.onAuthStateChange(async () => {
@@ -1534,71 +1624,13 @@ function updateAllResidualsFromWeek() {
 
     window.addEventListener("team:changed", async () => {
       await renderAuthStatus();
+      hideAthleteDetail();
     });
   });
 
   window.microdoseUI = { runDayPlan, runWeekPlan, applyDayToPanel };
 })();
 
-// =========================
-// Auth status UI
-// =========================
-function el(id) { return document.getElementById(id); }
-
-async function renderAuthStatus() {
-  const line = el("authStatusLine");
-  const teamLine = el("teamStatusLine");
-  const signOutBtn = el("signOutBtn");
-  if (!line || !teamLine) return;
-
-  // 1) Auth state
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user;
-
-  if (user) {
-    const email = user.email || "(óþekkt netfang)";
-    line.textContent = `Innskráður sem: ${email}`;
-    if (signOutBtn) signOutBtn.style.display = "inline-flex";
-  } else {
-    line.textContent = "Ekki innskráður";
-    if (signOutBtn) signOutBtn.style.display = "none";
-  }
-
-  // 2) Team state (sýnir ID ef ekkert annað er tiltækt)
-  const teamId =
-    window.currentTeamId ||
-    localStorage.getItem("selected_team_id") ||
-    "";
-
-  teamLine.textContent = teamId ? `Lið: ${teamId}` : "Lið: —";
-
-  // 3) Sign out handler (bind once)
-  if (signOutBtn && !signOutBtn.dataset.bound) {
-    signOutBtn.dataset.bound = "1";
-    signOutBtn.addEventListener("click", async () => {
-      await supabase.auth.signOut();
-      await renderAuthStatus();
-    });
-  }
-}
-
-// Boot once (and listen for changes)
-(function initAuthStatusUI() {
-  // Þegar DOM er tilbúið
-  document.addEventListener("DOMContentLoaded", async () => {
-    await renderAuthStatus();
-
-    // Live update þegar auth breytist (magic link, refresh, signout)
-    supabase.auth.onAuthStateChange(async () => {
-      await renderAuthStatus();
-    });
-
-    // Ef þú ert með team:changed event (þú nefndir það áður)
-    window.addEventListener("team:changed", async () => {
-      await renderAuthStatus();
-    });
-  });
-})();
 // ===============================
 // IO (Print / Export / Import / Clear) wiring
 // ===============================
@@ -5257,79 +5289,3 @@ function renderWeekCards(resultOverride, scheduleOverride) {
 // =========================
 // Magic link landing + auth status refresh
 // =========================
-const supabaseGlobal = (typeof window !== 'undefined' && (window.supabase || window.__supabase)) || null;
-function el(id) { return document.getElementById(id); }
-
-async function handleMagicLinkLanding() {
-  if (!supabaseGlobal) return;
-  if (location.hash && location.hash.includes("access_token=")) {
-    await new Promise(r => setTimeout(r, 50));
-    try {
-      await supabaseGlobal.auth.getSession();
-    } catch (_) {}
-    history.replaceState({}, document.title, location.pathname + location.search);
-  }
-}
-
-async function renderAuthStatus() {
-  if (!supabaseGlobal) return;
-  const line = el("authStatusLine");
-  const teamLine = el("teamStatusLine");
-  const signOutBtn = el("signOutBtn");
-  if (!line || !teamLine) return;
-
-  const { data: { session } } = await supabaseGlobal.auth.getSession();
-  const user = session?.user;
-
-  if (user) {
-    const email = user.email || "(óþekkt netfang)";
-    line.textContent = `Innskráður sem: ${email}`;
-    if (signOutBtn) signOutBtn.style.display = "inline-flex";
-  } else {
-    line.textContent = "Ekki innskráður";
-    if (signOutBtn) signOutBtn.style.display = "none";
-  }
-
-  const teamId =
-    window.currentTeamId ||
-    localStorage.getItem("selected_team_id") ||
-    "";
-
-  teamLine.textContent = teamId ? `Lið: ${teamId}` : "Lið: —";
-
-  if (signOutBtn && !signOutBtn.dataset.bound) {
-    signOutBtn.dataset.bound = "1";
-    signOutBtn.addEventListener("click", async () => {
-      await supabaseGlobal.auth.signOut();
-      await renderAuthStatus();
-    });
-  }
-}
-
-(function initAuthStatusUI() {
-  document.addEventListener("DOMContentLoaded", async () => {
-    await handleMagicLinkLanding();
-    await settleAuthFromUrl();
-    await renderAuthStatus();
-
-    if (supabaseGlobal?.auth?.onAuthStateChange) {
-      supabaseGlobal.auth.onAuthStateChange(async () => {
-        await renderAuthStatus();
-      });
-    }
-
-    window.addEventListener("team:changed", async () => {
-      await renderAuthStatus();
-    });
-  });
-})();
-
-// Magic-link settle helper (duplicate-safe)
-async function settleAuthFromUrl() {
-  if (!supabaseGlobal) return;
-  if (location.hash && location.hash.includes("access_token=")) {
-    await new Promise(r => setTimeout(r, 80));
-    try { await supabaseGlobal.auth.getSession(); } catch (_) {}
-    history.replaceState({}, document.title, location.pathname + location.search);
-  }
-}

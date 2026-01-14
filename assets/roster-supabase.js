@@ -69,12 +69,20 @@ function renderPlayers(players) {
     const name = `${p.first_name} ${p.last_name}`.trim();
     const pos = p.position ? ` • ${p.position}` : "";
     return `
-      <div style="padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10);">
+      <div class="roster-player" data-player-id="${p.id}" style="padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10); cursor:pointer;">
         <div style="font-weight:600;">${name}</div>
         <div style="opacity:.75; font-size:.9rem;">${pos || "&nbsp;"}</div>
       </div>
     `;
   }).join("");
+
+  // Bind click to show athlete detail
+  list.querySelectorAll('.roster-player').forEach(row => {
+    row.addEventListener('click', () => {
+      const pid = row.getAttribute('data-player-id');
+      if (window.showAthleteDetail) window.showAthleteDetail(pid);
+    });
+  });
 }
 
 async function loadPlayers(teamId) {
@@ -104,8 +112,10 @@ async function loadPlayers(teamId) {
     renderPlayers(players);
     updateAddState(signedIn, teamId);
   } catch (e) {
+    const msg = String(e?.message || e);
+    if (msg.includes("aborted") || msg.includes("AbortError")) return;
     console.error(e);
-    status.textContent = "Villa við að hlaða leikmenn: " + (e?.message || e);
+    status.textContent = "Villa við að hlaða leikmenn: " + msg;
     renderPlayers([]);
     updateAddState(signedIn, teamId);
   }
