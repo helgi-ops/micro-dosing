@@ -1538,6 +1538,66 @@ function updateAllResidualsFromWeek() {
 
   window.microdoseUI = { runDayPlan, runWeekPlan, applyDayToPanel };
 })();
+
+// =========================
+// Auth status UI
+// =========================
+function el(id) { return document.getElementById(id); }
+
+async function renderAuthStatus() {
+  const line = el("authStatusLine");
+  const teamLine = el("teamStatusLine");
+  const signOutBtn = el("signOutBtn");
+  if (!line || !teamLine) return;
+
+  // 1) Auth state
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
+
+  if (user) {
+    const email = user.email || "(óþekkt netfang)";
+    line.textContent = `Innskráður sem: ${email}`;
+    if (signOutBtn) signOutBtn.style.display = "inline-flex";
+  } else {
+    line.textContent = "Ekki innskráður";
+    if (signOutBtn) signOutBtn.style.display = "none";
+  }
+
+  // 2) Team state (sýnir ID ef ekkert annað er tiltækt)
+  const teamId =
+    window.currentTeamId ||
+    localStorage.getItem("selected_team_id") ||
+    "";
+
+  teamLine.textContent = teamId ? `Lið: ${teamId}` : "Lið: —";
+
+  // 3) Sign out handler (bind once)
+  if (signOutBtn && !signOutBtn.dataset.bound) {
+    signOutBtn.dataset.bound = "1";
+    signOutBtn.addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      await renderAuthStatus();
+    });
+  }
+}
+
+// Boot once (and listen for changes)
+(function initAuthStatusUI() {
+  // Þegar DOM er tilbúið
+  document.addEventListener("DOMContentLoaded", async () => {
+    await renderAuthStatus();
+
+    // Live update þegar auth breytist (magic link, refresh, signout)
+    supabase.auth.onAuthStateChange(async () => {
+      await renderAuthStatus();
+    });
+
+    // Ef þú ert með team:changed event (þú nefndir það áður)
+    window.addEventListener("team:changed", async () => {
+      await renderAuthStatus();
+    });
+  });
+})();
 // ===============================
 // IO (Print / Export / Import / Clear) wiring
 // ===============================

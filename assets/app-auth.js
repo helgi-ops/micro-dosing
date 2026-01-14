@@ -64,9 +64,12 @@ if (old) old.remove();
   document.getElementById("teamSelect").addEventListener("change", () => {
     const v = document.getElementById("teamSelect").value;
     localStorage.setItem("selectedTeamId", v || "");
+    localStorage.setItem("selected_team_id", v || "");
     window.__selectedTeamId = v || "";
+    window.currentTeamId = v || "";
     document.getElementById("teamStatus").textContent = v ? "Valið." : "";
     window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: v || "" } }));
+    window.dispatchEvent(new Event("team:changed"));
   });
 }
 
