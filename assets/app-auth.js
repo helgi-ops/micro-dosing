@@ -89,6 +89,15 @@ if (old) old.remove();
   }
 }
 
+// Handle magic link landing (#access_token=...) before loading teams
+async function settleAuthFromUrl() {
+  if (location.hash && location.hash.includes("access_token=")) {
+    await new Promise(r => setTimeout(r, 80));
+    try { await supabase.auth.getSession(); } catch (_) {}
+    history.replaceState({}, document.title, location.pathname + location.search);
+  }
+}
+
 async function updateAuthStatus() {
   const session = await api.getSession();
   const user = session?.user;
@@ -107,7 +116,7 @@ async function loadTeams() {
     }
 
     const teams = await api.getTeams();
-    const selected = localStorage.getItem("selectedTeamId") || (teams[0]?.id ?? "");
+    const selected = localStorage.getItem("selectedTeamId") || "";
     el("authBoxTeamSelect").innerHTML =
       `<option value="">— Veldu lið —</option>` +
       teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
@@ -156,10 +165,12 @@ supabase.auth.onAuthStateChange(async (_event, session) => {
 
 const host = document.getElementById("rosterHooks");
 ensureAuthUI(host);
-if (host) loadTeamsSafely();
+if (host) {
+  settleAuthFromUrl().then(loadTeamsSafely);
+}
 
 // Expose helper so other modules (roster-supabase) can remount after DOM changes
 window.renderAuthBox = function(target){
   ensureAuthUI(target);
-  loadTeamsSafely();
+  settleAuthFromUrl().then(loadTeamsSafely);
 };

@@ -77,6 +77,12 @@
         if (signOutBtn) signOutBtn.style.display = "none";
       }
     } catch (e) {
+      const msg = String(e?.message || e);
+      if (msg.toLowerCase().includes("aborted")) {
+        line.textContent = "Athuga innskráningu…";
+        if (signOutBtn) signOutBtn.style.display = "none";
+        return;
+      }
       line.textContent = "Auth villa: " + (e?.message || e);
       if (signOutBtn) signOutBtn.style.display = "none";
     }
@@ -1785,6 +1791,7 @@ function updateAllResidualsFromWeek() {
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
+    await settleAuthFromUrl();
     await renderAuthStatus();
     try { initNavigation(); } catch (e) { console.error("[nav] init failed", e); }
 
