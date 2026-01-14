@@ -67,27 +67,16 @@ export const api = {
     return data || [];
   },
 
-  async createPlayer(teamId, payload) {
-    // Accept { name } or { first_name, last_name }
-    const full = (payload.name || '').trim();
-    let first = payload.first_name || '';
-    let last = payload.last_name || '';
-    if (full && !(first || last)) {
-      const parts = full.split(/\s+/);
-      first = parts.shift() || '';
-      last = parts.join(' ');
-    }
-    const row = {
-      team_id: teamId,
-      first_name: first,
-      last_name: last,
-      position: payload.position || null,
-      note: payload.note || null,
-      status: payload.status || "active",
-    };
+  async createPlayer(teamId, firstName, lastName, position, status) {
     const { data, error } = await supabase
       .from("players")
-      .insert(row)
+      .insert([{
+        team_id: teamId,
+        first_name: firstName,
+        last_name: lastName,
+        position: position || null,
+        status: status || "active",
+      }])
       .select()
       .single();
     if (error) throw error;

@@ -65,6 +65,22 @@
     const signOutBtn = el("signOutBtn");
     if (!line || !teamLine || !supabaseClient) return;
 
+    function getSelectedTeamName(teamId){
+      const top = document.getElementById("teamSelectTopbar");
+      if (top && top.value === teamId && top.selectedOptions?.[0]) {
+        const name = top.selectedOptions[0].textContent?.trim();
+        if (name && !name.startsWith("—")) return name;
+      }
+
+      const authSel = document.getElementById("authBoxTeamSelect");
+      if (authSel && authSel.value === teamId && authSel.selectedOptions?.[0]) {
+        const name = authSel.selectedOptions[0].textContent?.trim();
+        if (name && !name.startsWith("—")) return name;
+      }
+
+      return "";
+    }
+
     try {
       const { data: { session } } = await supabaseClient.auth.getSession();
       const user = session?.user;
@@ -83,7 +99,7 @@
         window.__selectedTeamId = "";
         window.currentTeamId = "";
         const authSel = document.getElementById("authBoxTeamSelect");
-        const topSel = document.getElementById("teamSelect");
+        const topSel = document.getElementById("teamSelectTopbar");
         if (authSel) authSel.value = "";
         if (topSel) topSel.value = "";
         return;
@@ -115,7 +131,8 @@
       localStorage.getItem("selectedTeamId") ||
       localStorage.getItem("selected_team_id") ||
       "";
-    teamLine.textContent = teamId ? `Lið: ${teamId}` : "Lið: —";
+    const teamName = teamId ? getSelectedTeamName(teamId) : "";
+    teamLine.textContent = teamId ? `Lið: ${teamName || "—"}` : "Lið: —";
 
     if (signOutBtn && !signOutBtn.dataset.bound) {
       signOutBtn.dataset.bound = "1";

@@ -12,7 +12,7 @@ function resetTeamSelection() {
   window.currentTeamId = "";
 
   const authSel = el("authBoxTeamSelect");
-  const topSel = document.getElementById("teamSelect");
+  const topSel = document.getElementById("teamSelectTopbar"); // ✅ var "teamSelect"
   const placeholder = `<option value="">— Veldu lið —</option>`;
   if (authSel) {
     authSel.innerHTML = placeholder;
@@ -124,7 +124,12 @@ async function settleAuthFromUrl() {
 async function updateAuthStatus() {
   const session = await api.getSession();
   const user = session?.user;
-  el("authBoxStatus").textContent = user ? `Signed in: ${user.email}` : "Not signed in.";
+
+  const statusEl = el("authBoxStatus");
+  if (statusEl) {
+    statusEl.textContent = user ? `Signed in: ${user.email}` : "Not signed in.";
+  }
+
   if (!user) resetTeamSelection();
 }
 
@@ -140,40 +145,41 @@ async function loadTeams() {
     if (el("authBoxTeamStatus")) el("authBoxTeamStatus").textContent = "Hleð liðum…";
 
     let teams = await api.getTeams();
-    // If no teams returned but we have a preferred id, expose it as placeholder
-    const preferredId = "b0748c6f-0b22-4043-8078-8dfd5f13a053";
-    const hasPreferred = teams.some(t => t.id === preferredId);
-    if (!teams.length && preferredId) {
-      teams = [{ id: preferredId, name: "Lið" }];
-    }
+
     const stored = localStorage.getItem("selectedTeamId") || "";
     const hasStored = teams.some(t => t.id === stored);
 
     let selected = "";
-    if (hasPreferred) selected = preferredId;
-    else if (hasStored) selected = stored;
+    if (hasStored) selected = stored;
     else if (teams.length) selected = teams[0].id;
-    el("authBoxTeamSelect").innerHTML =
-      `<option value="">— Veldu lið —</option>` +
-      teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
 
-    el("authBoxTeamSelect").value = selected || "";
+    const selectEl = el("authBoxTeamSelect");
+    if (selectEl) {
+      selectEl.innerHTML =
+        `<option value="">— Veldu lið —</option>` +
+        teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+      selectEl.value = selected || "";
+    }
+
     window.__selectedTeamId = selected || "";
     window.currentTeamId = selected || "";
-    if (el("authBoxTeamStatus")) {
-      el("authBoxTeamStatus").textContent = teams.length ? "Lið hlaðin." : "Engin lið (RLS?)";
+
+    const statusEl = el("authBoxTeamStatus");
+    if (statusEl) {
+      statusEl.textContent = teams.length ? "Lið hlaðin." : "Engin lið (athuga RLS / team_members).";
     }
+
     const topSel = document.getElementById("teamSelectTopbar");
-    if (topSel) {
-      topSel.innerHTML = el("authBoxTeamSelect").innerHTML;
-      topSel.value = el("authBoxTeamSelect").value;
+    if (topSel && selectEl) {
+      topSel.innerHTML = selectEl.innerHTML;
+      topSel.value = selectEl.value;
     }
-    // Persist selection if chosen/auto-chosen
+
     try {
       localStorage.setItem("selectedTeamId", selected || "");
       localStorage.setItem("selected_team_id", selected || "");
     } catch (_) {}
-    // Always broadcast (empty allowed)
+
     window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: selected || "" } }));
   } catch (e) {
     const msg = String(e?.message || e);

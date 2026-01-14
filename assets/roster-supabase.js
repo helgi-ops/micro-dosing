@@ -14,7 +14,12 @@ const IDS = {
 function byId(id) { return document.getElementById(id); }
 
 function getTeamId() {
-  return window.__selectedTeamId || localStorage.getItem("selectedTeamId") || "";
+  return (
+    window.__selectedTeamId ||
+    localStorage.getItem("selectedTeamId") ||
+    localStorage.getItem("selected_team_id") ||
+    ""
+  );
 }
 
 async function isSignedIn() {
@@ -145,9 +150,14 @@ async function addPlayer(teamId) {
 
   if (!name) return (status.textContent = "Vantar nafn leikmanns.");
 
+  // split name into first/last (simple)
+  const parts = name.split(/\s+/);
+  const first = parts.shift() || name;
+  const last = parts.join(" ");
+
   try {
     status.textContent = "Bæti við leikmanni…";
-    await api.createPlayer(teamId, { name, position: pos });
+    await api.createPlayer(teamId, first, last, pos);
 
     byId(IDS.name).value = "";
     byId(IDS.pos).value = "";
