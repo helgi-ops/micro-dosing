@@ -7,7 +7,7 @@ const IDS = {
   list: "rosterPlayerList",
   name: "playerName",
   pos: "playerPosition",
-  btn: "addPlayerBtn",
+  btn: "rosterAddPlayerBtn",
   authHint: "authRequiredHint"
 };
 

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Program Generator</title>
+  <link rel="icon" href="data:," />
   <style>
     :root {
       --bg: #0b1021;
@@ -390,11 +391,9 @@
         <span class="brand-text">Coach Dashboard</span>
       </div>
       <div class="field">
-        <label for="teamSelect">Lið / hópur</label>
-        <select id="teamSelect" aria-label="Veldu lið">
-          <option>Keflavík U19</option>
-          <option>Breiðablik Akademía</option>
-          <option>Valur A-lið</option>
+        <label for="teamSelectTopbar">Lið / hópur</label>
+        <select id="teamSelectTopbar" aria-label="Veldu lið">
+          <option value="">— Hleð liðum… —</option>
         </select>
       </div>
     </div>
@@ -422,7 +421,7 @@
   </div>
 
   <div class="app-shell">
-    <nav class="coach-sidebar no-print" aria-label="Coach navigation">
+    <nav class="coach-sidebar no-print" aria-label="Coach navigation" data-nav="coach">
       <div class="sidebar-header">
         <span class="sidebar-title">Navigation</span>
       </div>
@@ -439,7 +438,7 @@
     <div class="app">
     <div id="supabaseHooks"></div>
 
-    <header class="app-hero no-print panel app-panel" id="panel-hero">
+    <header class="app-hero no-print panel" id="panel-hero">
       <div class="app-hero__inner">
         <p class="eyebrow">Microdosing Coach</p>
         <h1>Örskömmtun í þjálfun</h1>
@@ -473,7 +472,7 @@
       <div id="rosterHooks"></div>
     </section>
 
-    <section class="panel week-builder-panel no-print app-panel" id="panel-weekBuilder">
+    <section class="panel week-builder-panel no-print app-panel" id="panel-weekBuilder" hidden>
       <div class="panel-head">
         <div>
           <p class="eyebrow">Week Builder</p>
@@ -671,7 +670,7 @@
       </div>
     </section>
 
-    <section class="panel monitoring-panel no-print app-panel" id="panel-monitoring">
+    <section class="panel monitoring-panel no-print app-panel" id="panel-monitoring" hidden>
       <div class="panel-head">
         <div>
           <p class="eyebrow">Monitoring</p>
@@ -704,63 +703,9 @@
           <div>Aðgerðir</div>
         </div>
 
-        <div class="mon-row">
-          <div class="mon-player">
-            <span class="status-light green"></span>
-            <div>
-              <strong>Helgi Jónsson</strong>
-              <div class="muted small">Forward</div>
-            </div>
-          </div>
-          <div><span class="pill pill-green">7</span></div>
-          <div><span class="pill pill-yellow">2</span></div>
-          <div><span class="pill pill-green">1</span></div>
-          <div><span class="pill pill-green ghost">Yes</span></div>
-          <div><span class="pill pill-green">Green</span></div>
-          <div class="mon-actions">
-            <button type="button" class="ghost-btn small-btn">Nudge</button>
-            <button type="button" class="ghost-btn small-btn">Override</button>
-            <button type="button" class="ghost-btn small-btn">Mark done</button>
-          </div>
-        </div>
-
-        <div class="mon-row">
-          <div class="mon-player">
-            <span class="status-light yellow"></span>
-            <div>
-              <strong>Sara Björk</strong>
-              <div class="muted small">Midfielder</div>
-            </div>
-          </div>
-          <div><span class="pill pill-yellow">5</span></div>
-          <div><span class="pill pill-yellow">2</span></div>
-          <div><span class="pill pill-red">2</span></div>
-          <div><span class="pill pill-red ghost">No</span></div>
-          <div><span class="pill pill-yellow">Yellow</span></div>
-          <div class="mon-actions">
-            <button type="button" class="ghost-btn small-btn">Nudge</button>
-            <button type="button" class="ghost-btn small-btn">Override</button>
-            <button type="button" class="ghost-btn small-btn">Mark done</button>
-          </div>
-        </div>
-
-        <div class="mon-row">
-          <div class="mon-player">
-            <span class="status-light red"></span>
-            <div>
-              <strong>Aron Pálmi</strong>
-              <div class="muted small">Defender</div>
-            </div>
-          </div>
-          <div><span class="pill pill-red">3</span></div>
-          <div><span class="pill pill-red">3</span></div>
-          <div><span class="pill pill-yellow">1</span></div>
-          <div><span class="pill pill-red ghost">No</span></div>
-          <div><span class="pill pill-red">Red</span></div>
-          <div class="mon-actions">
-            <button type="button" class="ghost-btn small-btn">Nudge</button>
-            <button type="button" class="ghost-btn small-btn">Override</button>
-            <button type="button" class="ghost-btn small-btn">Mark done</button>
+        <div class="mon-row" id="monitoringEmpty">
+          <div class="muted" style="grid-column: 1 / -1;">
+            Engin gögn enn — veldu lið og bættu við leikmönnum.
           </div>
         </div>
       </div>
@@ -872,7 +817,7 @@
       </aside>
     </div>
 
-    <section class="panel reports-panel no-print app-panel" id="panel-reports">
+    <section class="panel reports-panel no-print app-panel" id="panel-reports" hidden>
       <div class="panel-head">
         <div>
           <p class="eyebrow">Reports</p>
@@ -978,6 +923,28 @@
       </div>
     </section>
 
+    <section class="panel rules-panel no-print app-panel" id="panel-rules" hidden>
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Rules Library</p>
+          <h2>Rules & Templates</h2>
+          <p class="muted">Stilla reglur fyrir micro-dose templates og auto-regulation.</p>
+        </div>
+      </div>
+      <p class="muted">Placeholder fyrir Rules Library view.</p>
+    </section>
+
+    <section class="panel admin-panel no-print app-panel" id="panel-admin" hidden>
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Admin</p>
+          <h2>Team & Access</h2>
+          <p class="muted">Stilla lið, aðgang og heimildir.</p>
+        </div>
+      </div>
+      <p class="muted">Placeholder fyrir Admin view.</p>
+    </section>
+
   <div>
   <form>
     <div class="stack">
@@ -1072,9 +1039,7 @@
           <div class="two-col">
             <label>Leikmannaval
               <select id="playerSelect">
-                <option value="">Veldu leikmann</option>
-                <option value="Aðalleikmaður">Aðalleikmaður</option>
-                <option value="Leikmaður 2">Leikmaður 2</option>
+                <option value="">— Veldu leikmann —</option>
                 <option value="Custom">Skrá handvirkt</option>
               </select>
             </label>

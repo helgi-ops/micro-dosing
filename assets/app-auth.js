@@ -20,63 +20,79 @@ if (old) old.remove();
     "margin:12px 0; padding:12px; border:1px solid rgba(255,255,255,.12); border-radius:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;";
 
   box.innerHTML = `
-    <input id="authEmail" type="email" placeholder="email fyrir innskráningu"
+    <input id="authBoxEmail" type="email" placeholder="email fyrir innskráningu"
       style="min-width:240px; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit;" />
-    <button id="btnSignIn" style="padding:10px 14px; border-radius:10px;">Send login link</button>
-    <button id="btnSignOut" style="padding:10px 14px; border-radius:10px;">Sign out</button>
-    <span id="authStatus" style="opacity:.85;"></span>
+    <button id="authBoxSignIn" style="padding:10px 14px; border-radius:10px;">Send login link</button>
+    <button id="authBoxSignOut" style="padding:10px 14px; border-radius:10px;">Sign out</button>
+    <span id="authBoxStatus" style="opacity:.85;"></span>
 
     <span style="margin-left:10px; opacity:.7;">Team:</span>
-    <select id="teamSelect"
+    <select id="authBoxTeamSelect"
       style="min-width:240px; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit;">
       <option value="">— Veldu lið —</option>
     </select>
-    <span id="teamStatus" style="opacity:.75;"></span>
+    <span id="authBoxTeamStatus" style="opacity:.75;"></span>
   `;
 
   host.prepend(box);
 
-  document.getElementById("btnSignIn").addEventListener("click", async () => {
-    const email = document.getElementById("authEmail").value.trim();
-    if (!email) return (document.getElementById("authStatus").textContent = "Sláðu inn email.");
-    document.getElementById("authStatus").textContent = "Sendi login link…";
+  document.getElementById("authBoxSignIn").addEventListener("click", async () => {
+    const email = document.getElementById("authBoxEmail").value.trim();
+    if (!email) return (document.getElementById("authBoxStatus").textContent = "Sláðu inn email.");
+    document.getElementById("authBoxStatus").textContent = "Sendi login link…";
     try {
       await api.signInWithEmail(email);
-      document.getElementById("authStatus").textContent = "Login link sent á email.";
+      document.getElementById("authBoxStatus").textContent = "Login link sent á email.";
     } catch (e) {
       console.error(e);
-      document.getElementById("authStatus").textContent = "Villa: " + (e?.message || e);
+      document.getElementById("authBoxStatus").textContent = "Villa: " + (e?.message || e);
     }
   });
 
-  document.getElementById("btnSignOut").addEventListener("click", async () => {
-    document.getElementById("authStatus").textContent = "Signing out…";
+  document.getElementById("authBoxSignOut").addEventListener("click", async () => {
+    document.getElementById("authBoxStatus").textContent = "Signing out…";
     try {
       await api.signOut();
-      document.getElementById("authStatus").textContent = "Signed out.";
+      document.getElementById("authBoxStatus").textContent = "Signed out.";
       await loadTeams();
     } catch (e) {
       console.error(e);
-      document.getElementById("authStatus").textContent = "Villa: " + (e?.message || e);
+      document.getElementById("authBoxStatus").textContent = "Villa: " + (e?.message || e);
     }
   });
 
-  document.getElementById("teamSelect").addEventListener("change", () => {
-    const v = document.getElementById("teamSelect").value;
+  document.getElementById("authBoxTeamSelect").addEventListener("change", () => {
+    const v = document.getElementById("authBoxTeamSelect").value;
     localStorage.setItem("selectedTeamId", v || "");
     localStorage.setItem("selected_team_id", v || "");
     window.__selectedTeamId = v || "";
     window.currentTeamId = v || "";
-    document.getElementById("teamStatus").textContent = v ? "Valið." : "";
+    document.getElementById("authBoxTeamStatus").textContent = v ? "Valið." : "";
     window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: v || "" } }));
     window.dispatchEvent(new Event("team:changed"));
+    const topSel = document.getElementById("teamSelectTopbar");
+    if (topSel) topSel.value = v || "";
   });
+
+  // Sync from topbar select into auth box
+  const topSel = document.getElementById("teamSelectTopbar");
+  if (topSel && !topSel.dataset.bound) {
+    topSel.dataset.bound = "1";
+    topSel.addEventListener("change", () => {
+      const v = topSel.value || "";
+      const authSel = document.getElementById("authBoxTeamSelect");
+      if (authSel) {
+        authSel.value = v;
+        authSel.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+  }
 }
 
 async function updateAuthStatus() {
   const session = await api.getSession();
   const user = session?.user;
-  el("authStatus").textContent = user ? `Signed in: ${user.email}` : "Not signed in.";
+  el("authBoxStatus").textContent = user ? `Signed in: ${user.email}` : "Not signed in.";
 }
 
 async function loadTeams() {
@@ -85,20 +101,25 @@ async function loadTeams() {
     const session = await api.getSession();
     if (!session?.user) {
       // ekki loggaður inn -> engin teams
-      el("teamSelect").innerHTML = `<option value="">— Veldu lið —</option>`;
-      el("teamStatus").textContent = "";
+      el("authBoxTeamSelect").innerHTML = `<option value="">— Veldu lið —</option>`;
+      el("authBoxTeamStatus").textContent = "";
       return;
     }
 
     const teams = await api.getTeams();
     const selected = localStorage.getItem("selectedTeamId") || (teams[0]?.id ?? "");
-    el("teamSelect").innerHTML =
+    el("authBoxTeamSelect").innerHTML =
       `<option value="">— Veldu lið —</option>` +
       teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
 
-    el("teamSelect").value = selected || "";
+    el("authBoxTeamSelect").value = selected || "";
     window.__selectedTeamId = selected || "";
-    el("teamStatus").textContent = selected ? "Loaded." : "Engin lið (RLS?)";
+    el("authBoxTeamStatus").textContent = selected ? "Loaded." : "Engin lið (RLS?)";
+    const topSel = document.getElementById("teamSelectTopbar");
+    if (topSel) {
+      topSel.innerHTML = el("authBoxTeamSelect").innerHTML;
+      topSel.value = el("authBoxTeamSelect").value;
+    }
     if (selected) {
       window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: selected } }));
     }
@@ -106,7 +127,7 @@ async function loadTeams() {
     const msg = String(e?.message || e);
     if (msg.includes("aborted") || msg.includes("AbortError")) return;
     console.error("Teams load failed:", e);
-    el("teamStatus").textContent = "Teams error: " + msg;
+    el("authBoxTeamStatus").textContent = "Teams error: " + msg;
   }
 }
 
