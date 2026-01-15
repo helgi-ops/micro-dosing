@@ -9,6 +9,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    storageKey: "coach-dashboard-auth",
   },
 });
 window.supabase = supabase;
@@ -33,11 +34,22 @@ export const api = {
   },
 
   async signInWithEmail(email) {
+    const redirectTo = new URL('./', window.location.href).toString();
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: window.location.origin + window.location.pathname
+        emailRedirectTo: redirectTo
       }
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async sendMagicLink(email) {
+    const redirectTo = new URL('./', window.location.href).toString();
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo }
     });
     if (error) throw error;
     return data;
@@ -131,3 +143,24 @@ export const api = {
 // debug (valfrjálst)
 window.__api = api;
 window.__supabase = supabase;
+
+let _session = null;
+
+export function getAuthSession() {
+  return _session;
+}
+
+export async function initAuth() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) console.warn('[auth] getSession error:', error);
+  _session = data?.session ?? null;
+
+  window.dispatchEvent(new CustomEvent('auth:changed', { detail: { session: _session } }));
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    _session = session ?? null;
+    window.dispatchEvent(new CustomEvent('auth:changed', { detail: { session: _session, event: _event } }));
+  });
+
+  return _session;
+}

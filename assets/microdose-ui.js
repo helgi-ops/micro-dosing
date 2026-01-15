@@ -1,3 +1,5 @@
+import { initAuth } from "./dataClient.js";
+
 (() => {
   // ---------- Supabase bridge & helpers ----------
   const supabaseClient =
@@ -1830,6 +1832,7 @@ function updateAllResidualsFromWeek() {
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
+    await initAuth();
     await settleAuthFromUrl();
     await renderAuthStatus();
     try { initNavigation(); } catch (e) { console.error("[nav] init failed", e); }
