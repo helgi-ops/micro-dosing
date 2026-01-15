@@ -130,7 +130,19 @@ async function updateAuthStatus() {
     statusEl.textContent = user ? `Signed in: ${user.email}` : "Not signed in.";
   }
 
+  if (user) acceptPendingInvites();
   if (!user) resetTeamSelection();
+}
+
+async function acceptPendingInvites() {
+  try {
+    const invites = await api.getMyInvites();
+    for (const inv of invites) {
+      await api.acceptInvite(inv.id);
+    }
+  } catch (e) {
+    console.warn("acceptPendingInvites failed:", e?.message || e);
+  }
 }
 
 async function loadTeams() {

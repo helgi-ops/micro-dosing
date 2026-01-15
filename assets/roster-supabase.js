@@ -22,6 +22,12 @@ function getTeamId() {
   );
 }
 
+function getInviteStatus(player) {
+  if (player?.auth_user_id) return { key: 'accepted', label: 'Accepted' };
+  if (player?.invite_email) return { key: 'invited', label: 'Invited' };
+  return { key: 'none', label: 'Not invited' };
+}
+
 async function isSignedIn() {
   const { data } = await supabase.auth.getSession();
   return !!data?.session?.user;
@@ -70,13 +76,28 @@ function renderPlayers(players) {
   list.innerHTML = players.map(p => {
     const name = `${p.first_name} ${p.last_name}`.trim();
     const pos = p.position ? ` • ${p.position}` : "";
+    const pid = p.id;
+    const s = getInviteStatus(p);
     return `
-      <div class="roster-player" data-player-id="${p.id}" style="padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10); cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-        <div>
-          <div style="font-weight:600;">${name}</div>
-          <div style="opacity:.75; font-size:.9rem;">${pos || "&nbsp;"}</div>
+      <div class="roster-player" data-player-id="${pid}" style="padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10); display:grid; gap:6px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer;">
+          <div>
+            <div style="font-weight:600;">${name}</div>
+            <div style="opacity:.75; font-size:.9rem;">${pos || "&nbsp;"}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="invite-pill invite-${s.key}" title="${p.invite_email ? `Invite: ${p.invite_email}` : ''}" style="padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.12); font-size:12px; text-transform:uppercase; letter-spacing:0.05em; opacity:0.9;">
+              ${s.label}
+            </span>
+            <button type="button" class="ghost-btn small-btn roster-delete" data-player-id="${pid}">✕</button>
+          </div>
         </div>
-        <button type="button" class="ghost-btn small-btn roster-delete" data-player-id="${p.id}">✕</button>
+        <div class="invite-row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <input type="email" data-player-email="${pid}" placeholder="email fyrir innskráningu"
+            style="padding:8px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:200px; flex:1 1 200px;" />
+          <button type="button" class="ghost-btn small-btn send-invite" data-player-id="${pid}">Senda login link</button>
+        </div>
+        <div class="invite-status" data-player-status="${pid}" style="font-size:12px; opacity:.8;"></div>
       </div>
     `;
   }).join("");
@@ -96,6 +117,32 @@ function renderPlayers(players) {
       const pid = btn.getAttribute('data-player-id');
       if (!pid) return;
       await deletePlayerSafe(getTeamId(), pid);
+    });
+  });
+
+  // Invite buttons
+  list.querySelectorAll('.send-invite').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const pid = btn.getAttribute('data-player-id');
+      const teamId = getTeamId();
+      if (!pid || !teamId) return;
+      const emailInput = list.querySelector(`[data-player-email="${pid}"]`);
+      const statusEl = list.querySelector(`[data-player-status="${pid}"]`);
+      const email = (emailInput?.value || "").trim();
+      if (!email) {
+        if (statusEl) statusEl.textContent = "Vantar email.";
+        return;
+      }
+      try {
+        if (statusEl) statusEl.textContent = "Sendi boð…";
+        await api.createInvite(teamId, pid, email);
+        await api.signInWithEmail(email);
+        if (statusEl) statusEl.textContent = "Boð sent ✅ (athugaðu póstinn)";
+      } catch (err) {
+        console.error(err);
+        if (statusEl) statusEl.textContent = "Villa: " + (err?.message || err);
+      }
     });
   });
 }
@@ -175,8 +222,9 @@ async function deletePlayerSafe(teamId, playerId){
   if (!status) return;
   if (!(await isSignedIn())) return (status.textContent = "Þarft að vera innskráður.");
   if (!teamId || !playerId) return;
+  if (!confirm("Eyða leikmanni?")) return;
   try{
-    await api.deletePlayer(teamId, playerId);
+    await api.deletePlayer(playerId);
     status.textContent = "Leikmaður eyddur.";
     await loadPlayers(teamId);
   } catch(e){
@@ -184,6 +232,7 @@ async function deletePlayerSafe(teamId, playerId){
     if (msg.includes("aborted") || msg.includes("AbortError")) return;
     console.error(e);
     status.textContent = "Gat ekki eytt leikmanni: " + msg;
+    alert("Gat ekki eytt leikmanni: " + msg);
   }
 }
 

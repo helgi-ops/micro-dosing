@@ -60,9 +60,9 @@ export const api = {
   async getPlayers(teamId) {
     const { data, error } = await supabase
       .from("players")
-      .select("id,team_id,first_name,last_name,position,status,created_at")
+      .select("id,team_id,first_name,last_name,position,status,invite_email,invite_sent_at,auth_user_id,created_at")
       .eq("team_id", teamId)
-      .order("last_name");
+      .order("created_at", { ascending: true });
     if (error) throw error;
     return data || [];
   },
@@ -83,13 +83,48 @@ export const api = {
     return data;
   },
 
-  async deletePlayer(teamId, playerId) {
+  async deletePlayer(playerId) {
     const { error } = await supabase
       .from("players")
       .delete()
-      .eq("team_id", teamId)
       .eq("id", playerId);
     if (error) throw error;
+  },
+
+  async createInvite(teamId, playerId, email) {
+    const { data, error } = await supabase
+      .from("player_invites")
+      .upsert([{
+        team_id: teamId,
+        player_id: playerId,
+        email: (email || "").trim().toLowerCase(),
+        created_by: (await supabase.auth.getUser()).data?.user?.id || null,
+      }], { onConflict: "player_id" })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getMyInvites() {
+    const user = (await supabase.auth.getUser()).data?.user;
+    const email = (user?.email || "").trim().toLowerCase();
+    if (!email) return [];
+    const { data, error } = await supabase
+      .from("player_invites")
+      .select("id,team_id,player_id,email,accepted_at,created_at")
+      .eq("email", email)
+      .is("accepted_at", null)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async acceptInvite(inviteId) {
+    const { data, error } = await supabase
+      .rpc("accept_player_invite", { _invite_id: inviteId });
+    if (error) throw error;
+    return data;
   }
 };
 
