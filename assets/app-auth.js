@@ -161,6 +161,11 @@ async function loadTeams() {
     const stored = localStorage.getItem("selectedTeamId") || "";
     const hasStored = teams.some(t => t.id === stored);
 
+    // Fallback: if no teams returned but we have a stored id, surface it as an option
+    if (!teams.length && stored) {
+      teams = [{ id: stored, name: stored }];
+    }
+
     let selected = "";
     if (hasStored) selected = stored;
     else if (teams.length) selected = teams[0].id;

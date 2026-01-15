@@ -132,7 +132,7 @@
       localStorage.getItem("selected_team_id") ||
       "";
     const teamName = teamId ? getSelectedTeamName(teamId) : "";
-    teamLine.textContent = teamId ? `Lið: ${teamName || "—"}` : "Lið: —";
+    teamLine.textContent = teamId ? `Lið: ${teamName || teamId || "—"}` : "Lið: —";
 
     if (signOutBtn && !signOutBtn.dataset.bound) {
       signOutBtn.dataset.bound = "1";
