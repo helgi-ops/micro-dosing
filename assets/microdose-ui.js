@@ -269,6 +269,65 @@ import { initAuth } from "./dataClient.js";
     parent.insertBefore(authCard, addCard);
   }
 
+  // --- ROSTER LAYOUT FIX (self-healing) ----------------------------------------
+  function getRosterRoot() {
+    return (
+      document.querySelector('#rosterPanel') ||
+      document.querySelector('#roster-panel') ||
+      document.querySelector('[data-panel="roster"]') ||
+      document.querySelector('[data-view="roster"]') ||
+      (Array.from(document.querySelectorAll('button'))
+        .find(b => (b.textContent || '').trim().toLowerCase() === 'bæta við leikmanni')
+        ?.closest('main, .panel, .panel-body, .content, .content-area, section, div')) ||
+      null
+    );
+  }
+
+  let _rosterObserver = null;
+
+  function installRosterLayoutObserver() {
+    const root = getRosterRoot();
+    if (!root) return;
+
+    forceRosterAuthAboveAddPlayer();
+    setTimeout(forceRosterAuthAboveAddPlayer, 0);
+    setTimeout(forceRosterAuthAboveAddPlayer, 250);
+    setTimeout(forceRosterAuthAboveAddPlayer, 800);
+
+    if (_rosterObserver) {
+      try { _rosterObserver.disconnect(); } catch {}
+      _rosterObserver = null;
+    }
+
+    _rosterObserver = new MutationObserver(() => {
+      forceRosterAuthAboveAddPlayer();
+    });
+
+    _rosterObserver.observe(root, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  function installRosterTabClickHook() {
+    const rosterNavBtn = Array.from(document.querySelectorAll('button, a'))
+      .find(el => (el.textContent || '').trim().toLowerCase() === 'roster');
+
+    if (!rosterNavBtn) return;
+
+    rosterNavBtn.addEventListener('click', () => {
+      setTimeout(() => {
+        installRosterLayoutObserver();
+        forceRosterAuthAboveAddPlayer();
+      }, 0);
+      setTimeout(() => {
+        installRosterLayoutObserver();
+        forceRosterAuthAboveAddPlayer();
+      }, 250);
+    });
+  }
+  // --- END ROSTER LAYOUT FIX ---------------------------------------------------
+
   // Sync player dropdown when roster updates
   window.addEventListener('players:updated', (ev) => {
     const players = ev?.detail?.players || [];
@@ -1877,6 +1936,8 @@ function updateAllResidualsFromWeek() {
     setTimeout(forceRosterAuthAboveAddPlayer, 0);
     setTimeout(forceRosterAuthAboveAddPlayer, 250);
     setTimeout(forceRosterAuthAboveAddPlayer, 800);
+    installRosterLayoutObserver();
+    installRosterTabClickHook();
 
     if (supabaseClient && supabaseClient.auth?.onAuthStateChange) {
       supabaseClient.auth.onAuthStateChange(async () => {
