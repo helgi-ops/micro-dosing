@@ -632,6 +632,17 @@ body{
 .reports-panel{
   margin-top: 14px;
 }
+
+/* Roster layout ordering */
+#rosterPanelBody{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+#rosterAuthCard { order: -10; }
+#rosterAddPlayerCard { order: 10; }
+#rosterPlayerListCard { order: 20; }
+
 .reports-filters{
   display: flex;
   gap: 8px;
