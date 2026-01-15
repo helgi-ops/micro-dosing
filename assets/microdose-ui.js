@@ -237,6 +237,38 @@ import { initAuth } from "./dataClient.js";
   window.showAthleteDetail = showAthleteDetail;
   window.hideAthleteDetail = hideAthleteDetail;
 
+  // Ensure roster auth block stays above add-player block
+  function forceRosterAuthAboveAddPlayer() {
+    const emailInput =
+      document.querySelector('input[placeholder*="email fyrir innskráningu"]') ||
+      document.querySelector('#authEmail') ||
+      document.querySelector('input[type="email"]');
+
+    if (!emailInput) return;
+
+    const authCard = emailInput.closest('.card, .panel-card, .box, section, article, div');
+    if (!authCard) return;
+
+    const addBtn = Array.from(document.querySelectorAll('button'))
+      .find(b => (b.textContent || '').trim().toLowerCase() === 'bæta við leikmanni');
+
+    if (!addBtn) return;
+
+    const addCard = addBtn.closest('.card, .panel-card, .box, section, article, div');
+    if (!addCard) return;
+
+    const parent = addCard.parentElement;
+    if (!parent) return;
+
+    const children = Array.from(parent.children);
+    const authIndex = children.indexOf(authCard);
+    const addIndex = children.indexOf(addCard);
+
+    if (authIndex !== -1 && addIndex !== -1 && authIndex < addIndex) return;
+
+    parent.insertBefore(authCard, addCard);
+  }
+
   // Sync player dropdown when roster updates
   window.addEventListener('players:updated', (ev) => {
     const players = ev?.detail?.players || [];
@@ -266,6 +298,11 @@ import { initAuth } from "./dataClient.js";
     applyWeekStateToWeekBuilder(weekState);
     applyWeekStateToMicrodoseGrid(weekState);
     renderWeekCards();
+  });
+
+  window.addEventListener('auth:changed', () => {
+    forceRosterAuthAboveAddPlayer();
+    setTimeout(forceRosterAuthAboveAddPlayer, 0);
   });
 
   // Week state sync helpers
@@ -1836,6 +1873,10 @@ function updateAllResidualsFromWeek() {
     await settleAuthFromUrl();
     await renderAuthStatus();
     try { initNavigation(); } catch (e) { console.error("[nav] init failed", e); }
+    forceRosterAuthAboveAddPlayer();
+    setTimeout(forceRosterAuthAboveAddPlayer, 0);
+    setTimeout(forceRosterAuthAboveAddPlayer, 250);
+    setTimeout(forceRosterAuthAboveAddPlayer, 800);
 
     if (supabaseClient && supabaseClient.auth?.onAuthStateChange) {
       supabaseClient.auth.onAuthStateChange(async () => {
@@ -1851,6 +1892,8 @@ function updateAllResidualsFromWeek() {
       applyWeekStateToMicrodoseGrid(weekState);
       renderWeekCards();
       saveWeekState(weekState);
+      forceRosterAuthAboveAddPlayer();
+      setTimeout(forceRosterAuthAboveAddPlayer, 0);
     });
   });
 
