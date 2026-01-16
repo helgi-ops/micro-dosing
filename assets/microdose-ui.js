@@ -69,11 +69,11 @@ import {
     }
   }
 
-  async function renderAuthStatus() {
+  async function loadSessionAndRenderAuthStatus() {
     const line = el("authStatusLine");
     const teamLine = el("teamStatusLine");
     const signOutBtn = el("signOutBtn");
-    if (!line || !teamLine || !supabaseClient) return;
+    if (!line || !supabaseClient) return;
 
     function getSelectedTeamName(teamId){
       const top = document.getElementById("teamSelectTopbar");
@@ -92,15 +92,15 @@ import {
     }
 
     try {
-      const { data: { session } } = await supabaseClient.auth.getSession();
+      line.textContent = "Athuga innskráningu…";
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) throw error;
+
+      const session = data?.session;
       const user = session?.user;
-      if (user) {
-        const email = user.email || "(óþekkt netfang)";
-        line.textContent = `Innskráður sem: ${email}`;
-        if (signOutBtn) signOutBtn.style.display = "inline-flex";
-      } else {
-        line.textContent = "Ekki innskráður";
-        teamLine.textContent = "Lið: —";
+      if (!session || !user) {
+        line.textContent = "Ekki innskráð(ur). Sendu innskráningartengil.";
+        if (teamLine) teamLine.textContent = "Lið: —";
         if (signOutBtn) signOutBtn.style.display = "none";
         try {
           localStorage.removeItem("selectedTeamId");
@@ -114,42 +114,37 @@ import {
         if (topSel) topSel.value = "";
         return;
       }
-    } catch (e) {
-      const msg = String(e?.message || e);
-      if (msg.toLowerCase().includes("aborted")) {
-        line.textContent = "Athuga innskráningu…";
-        if (signOutBtn) signOutBtn.style.display = "none";
-        // Show any stored team id while retrying
-        const storedTeam =
-          window.currentTeamId ||
-          window.__selectedTeamId ||
-          localStorage.getItem("selectedTeamId") ||
-          localStorage.getItem("selected_team_id") ||
-          "";
-        teamLine.textContent = storedTeam ? `Lið: ${storedTeam}` : "Lið: —";
-        // retry after a short delay to resolve the race
-        setTimeout(renderAuthStatus, 250);
-        return;
+
+      const email = user.email || "(óþekkt netfang)";
+      line.textContent = `Innskráð(ur): ${email}`;
+      if (signOutBtn) signOutBtn.style.display = "inline-flex";
+
+      const teamId =
+        window.currentTeamId ||
+        window.__selectedTeamId ||
+        localStorage.getItem("selectedTeamId") ||
+        localStorage.getItem("selected_team_id") ||
+        "";
+      const teamName = teamId ? getSelectedTeamName(teamId) : "";
+      if (teamLine) teamLine.textContent = teamId ? `Lið: ${teamName || teamId || "—"}` : "Lið: —";
+
+      if (signOutBtn && !signOutBtn.dataset.bound) {
+        signOutBtn.dataset.bound = "1";
+        signOutBtn.addEventListener("click", async () => {
+          try { await supabaseClient.auth.signOut(); } catch (_) {}
+          await loadSessionAndRenderAuthStatus();
+        });
       }
-      line.textContent = "Auth villa: " + (e?.message || e);
+    } catch (err) {
+      console.error("supabase.auth.getSession failed:", err);
+      const msg =
+        err?.message ||
+        err?.error_description ||
+        (typeof err === "string" ? err : JSON.stringify(err));
+      line.textContent = `Innskráningarvilla: ${msg}`;
+      if (teamLine) teamLine.textContent = "Lið: —";
       if (signOutBtn) signOutBtn.style.display = "none";
-    }
-
-    const teamId =
-      window.currentTeamId ||
-      window.__selectedTeamId ||
-      localStorage.getItem("selectedTeamId") ||
-      localStorage.getItem("selected_team_id") ||
-      "";
-    const teamName = teamId ? getSelectedTeamName(teamId) : "";
-    teamLine.textContent = teamId ? `Lið: ${teamName || teamId || "—"}` : "Lið: —";
-
-    if (signOutBtn && !signOutBtn.dataset.bound) {
-      signOutBtn.dataset.bound = "1";
-      signOutBtn.addEventListener("click", async () => {
-        try { await supabaseClient.auth.signOut(); } catch (_) {}
-        await renderAuthStatus();
-      });
+      return;
     }
   }
 
@@ -2191,7 +2186,7 @@ function updateAllResidualsFromWeek() {
       applyWeekStateToWeekBuilder(weekState);
       applyWeekStateToMicrodoseGrid(weekState);
       renderWeekCards();
-      renderAuthStatus();
+      loadSessionAndRenderAuthStatus();
       ensureWeekCards();
       updateAthleteHint();
       autofillResidualInputs();
@@ -2253,7 +2248,7 @@ function updateAllResidualsFromWeek() {
   document.addEventListener("DOMContentLoaded", async () => {
     await initAuth();
     await settleAuthFromUrl();
-    await renderAuthStatus();
+    await loadSessionAndRenderAuthStatus();
     try { initNavigation(); } catch (e) { console.error("[nav] init failed", e); }
     forceRosterAuthAboveAddPlayer();
     setTimeout(forceRosterAuthAboveAddPlayer, 0);
@@ -2270,12 +2265,12 @@ function updateAllResidualsFromWeek() {
 
     if (supabaseClient && supabaseClient.auth?.onAuthStateChange) {
       supabaseClient.auth.onAuthStateChange(async () => {
-        await renderAuthStatus();
+        await loadSessionAndRenderAuthStatus();
       });
     }
 
     window.addEventListener("team:changed", async () => {
-      await renderAuthStatus();
+      await loadSessionAndRenderAuthStatus();
       hideAthleteDetail();
       weekState = normalizeWeekState({});
       applyWeekStateToWeekBuilder(weekState);
@@ -2285,6 +2280,7 @@ function updateAllResidualsFromWeek() {
       forceRosterAuthAboveAddPlayer();
       setTimeout(forceRosterAuthAboveAddPlayer, 0);
     });
+    loadSessionAndRenderAuthStatus();
   });
 
   window.microdoseUI = { runDayPlan, runWeekPlan, applyDayToPanel };

@@ -34,24 +34,30 @@ export const api = {
   },
 
   async signInWithEmail(email) {
-    const redirectTo = new URL('./', window.location.href).toString();
+    const redirectTo = window.location.href.split('#')[0];
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: redirectTo
       }
     });
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase signInWithOtp error:", error);
+      throw error;
+    }
     return data;
   },
 
   async sendMagicLink(email) {
-    const redirectTo = new URL('./', window.location.href).toString();
+    const redirectTo = window.location.href.split('#')[0];
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: redirectTo }
     });
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase signInWithOtp error:", error);
+      throw error;
+    }
     return data;
   },
 
@@ -72,7 +78,7 @@ export const api = {
   async getPlayers(teamId) {
     const { data, error } = await supabase
       .from("players")
-      .select("id,team_id,first_name,last_name,position,status,invite_email,invite_sent_at,auth_user_id,created_at")
+      .select("id, team_id, first_name, last_name, position, status, created_at, invite_email, invite_sent_at, auth_user_id, invite_accepted_at")
       .eq("team_id", teamId)
       .order("created_at", { ascending: true });
     if (error) throw error;
@@ -382,6 +388,34 @@ export async function markDayDone(weekDayId, payload = {}) {
     .select()
     .single();
 }
+
+export async function invitePlayer(playerId, inviteEmail) {
+  const { data: s } = await supabase.auth.getSession();
+  const token = s?.session?.access_token;
+  if (!token) throw new Error('Not signed in');
+
+  const redirectTo = new URL('./', window.location.href).toString();
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/invite-player`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      player_id: playerId,
+      invite_email: inviteEmail,
+      redirect_to: redirectTo
+    })
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Invite failed');
+  return json;
+}
+
+// expose on api for convenience
+api.invitePlayer = invitePlayer;
 
 // debug (valfrjálst)
 window.__api = api;

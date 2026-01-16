@@ -22,15 +22,50 @@ function getTeamId() {
   );
 }
 
-function getInviteStatus(player) {
-  if (player?.auth_user_id) return { key: 'accepted', label: 'Accepted' };
-  if (player?.invite_email) return { key: 'invited', label: 'Invited' };
-  return { key: 'none', label: 'Not invited' };
+let currentTeamId = getTeamId();
+let __rosterUnsubAuth = null;
+let __rosterWired = false;
+
+function fmtDT(x) {
+  try {
+    if (!x) return '';
+    return new Date(x).toLocaleString();
+  } catch {
+    return String(x || '');
+  }
+}
+
+function getInviteStatus(p) {
+  if (p?.auth_user_id) {
+    return {
+      key: 'accepted',
+      label: 'Accepted',
+      title: `Accepted: ${fmtDT(p.invite_accepted_at) || '—'}`
+    };
+  }
+  if (p?.invite_email) {
+    return {
+      key: 'invited',
+      label: 'Invited',
+      title: `Invited: ${p.invite_email}\nSent: ${fmtDT(p.invite_sent_at) || '—'}`
+    };
+  }
+  return {
+    key: 'none',
+    label: 'Not invited',
+    title: 'No invite sent'
+  };
 }
 
 async function isSignedIn() {
-  const { data } = await supabase.auth.getSession();
-  return !!data?.session?.user;
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) return false;
+    return !!data?.session?.user;
+  } catch (e) {
+    // Algengt þegar auth flow abortar (redirect / session restore)
+    return false;
+  }
 }
 
 function ensureRosterUI() {
@@ -60,7 +95,8 @@ function ensureRosterUI() {
 
   // Render auth UI inside roster panel if helper is exposed
   if (window.renderAuthBox) {
-    window.renderAuthBox(host.querySelector('.roster-auth') || host);
+    const mount = host.querySelector('#authBoxMount') || host;
+    window.renderAuthBox(mount);
   }
 }
 
@@ -68,83 +104,101 @@ function renderPlayers(players) {
   const list = byId(IDS.list);
   if (!list) return;
 
+  list.innerHTML = "";
+
   if (!players.length) {
     list.innerHTML = `<div style="opacity:.75;">Engir leikmenn í þessu liði enn.</div>`;
     return;
   }
 
-  list.innerHTML = players.map(p => {
-    const name = `${p.first_name} ${p.last_name}`.trim();
-    const pos = p.position ? ` • ${p.position}` : "";
-    const pid = p.id;
+  players.forEach(p => {
     const s = getInviteStatus(p);
-    return `
-      <div class="roster-player" data-player-id="${pid}" style="padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10); display:grid; gap:6px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer;">
-          <div>
-            <div style="font-weight:600;">${name}</div>
-            <div style="opacity:.75; font-size:.9rem;">${pos || "&nbsp;"}</div>
-          </div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span class="invite-pill invite-${s.key}" title="${p.invite_email ? `Invite: ${p.invite_email}` : ''}" style="padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.12); font-size:12px; text-transform:uppercase; letter-spacing:0.05em; opacity:0.9;">
-              ${s.label}
-            </span>
-            <button type="button" class="ghost-btn small-btn roster-delete" data-player-id="${pid}">✕</button>
-          </div>
+    const accepted = s.key === 'accepted';
+    const inviteEmailValue = p.invite_email || '';
+    const btnLabel = accepted ? 'Accepted' : (s.key === 'invited' ? 'Resend' : 'Send invite');
+    const row = document.createElement('div');
+    row.className = "roster-player";
+    row.dataset.playerId = p.id;
+
+    row.innerHTML = `
+      <div class="player-row">
+        <div class="player-main">
+          <div class="player-name">${p.first_name} ${p.last_name}</div>
+          <div class="player-meta">${p.position ?? ''}</div>
         </div>
-        <div class="invite-row" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <input type="email" data-player-email="${pid}" placeholder="email fyrir innskráningu"
-            style="padding:8px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit; min-width:200px; flex:1 1 200px;" />
-          <button type="button" class="ghost-btn small-btn send-invite" data-player-id="${pid}">Senda login link</button>
+
+        <div class="invite-actions">
+          <span class="invite-pill invite-${s.key}" title="${(s.title || '').replace(/"/g, '&quot;')}">
+            ${s.label}
+          </span>
+
+          <input class="invite-input"
+                 type="email"
+                 placeholder="Invite email"
+                 value="${inviteEmailValue}"
+                 data-invite-email="${p.id}"
+                 ${accepted ? 'disabled' : ''} />
+
+          <button class="btn"
+                  data-invite-send="${p.id}"
+                  ${accepted ? 'disabled' : ''}>
+            ${btnLabel}
+          </button>
         </div>
-        <div class="invite-status" data-player-status="${pid}" style="font-size:12px; opacity:.8;"></div>
       </div>
     `;
-  }).join("");
 
-  // Bind click to show athlete detail
-  list.querySelectorAll('.roster-player').forEach(row => {
-    row.addEventListener('click', () => {
-      const pid = row.getAttribute('data-player-id');
-      if (window.showAthleteDetail) window.showAthleteDetail(pid);
-    });
-  });
+    const actions = row.querySelector('.invite-actions');
+    if (actions) {
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'ghost-btn small-btn roster-delete';
+      delBtn.dataset.playerId = p.id;
+      delBtn.textContent = '✕';
+      actions.appendChild(delBtn);
+      delBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await deletePlayerSafe(currentTeamId || getTeamId(), p.id);
+      });
+    }
 
-  // Delete buttons
-  list.querySelectorAll('.roster-delete').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const pid = btn.getAttribute('data-player-id');
-      if (!pid) return;
-      await deletePlayerSafe(getTeamId(), pid);
+    const main = row.querySelector('.player-main');
+    main?.addEventListener('click', () => {
+      if (window.showAthleteDetail) window.showAthleteDetail(p.id);
     });
-  });
 
-  // Invite buttons
-  list.querySelectorAll('.send-invite').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const pid = btn.getAttribute('data-player-id');
-      const teamId = getTeamId();
-      if (!pid || !teamId) return;
-      const emailInput = list.querySelector(`[data-player-email="${pid}"]`);
-      const statusEl = list.querySelector(`[data-player-status="${pid}"]`);
-      const email = (emailInput?.value || "").trim();
-      if (!email) {
-        if (statusEl) statusEl.textContent = "Vantar email.";
-        return;
-      }
-      try {
-        if (statusEl) statusEl.textContent = "Sendi boð…";
-        await api.createInvite(teamId, pid, email);
-        await api.signInWithEmail(email);
-        if (statusEl) statusEl.textContent = "Boð sent ✅ (athugaðu póstinn)";
-      } catch (err) {
-        console.error(err);
-        if (statusEl) statusEl.textContent = "Villa: " + (err?.message || err);
-      }
-    });
+    const inviteBtn = row.querySelector(`button[data-invite-send="${p.id}"]`);
+    if (inviteBtn && !inviteBtn.disabled) {
+      inviteBtn.addEventListener('click', async () => {
+        const input = row.querySelector(`input[data-invite-email="${p.id}"]`);
+        const email = (input?.value || '').trim();
+        if (!email) return alert('Settu inn email');
+
+        inviteBtn.disabled = true;
+        const oldText = inviteBtn.textContent;
+        inviteBtn.textContent = 'Sending...';
+
+        try {
+          await api.invitePlayer(p.id, email);
+
+          // IMPORTANT: reload roster so status updates immediately
+          await loadPlayersForTeam(currentTeamId);
+
+        } catch (e) {
+          inviteBtn.disabled = false;
+          inviteBtn.textContent = oldText || 'Send invite';
+          alert(e?.message || String(e));
+        }
+      });
+    }
+
+    list.appendChild(row);
   });
+}
+
+async function loadPlayersForTeam(teamId) {
+  currentTeamId = teamId || getTeamId();
+  return loadPlayers(currentTeamId);
 }
 
 async function loadPlayers(teamId) {
@@ -209,7 +263,7 @@ async function addPlayer(teamId) {
     byId(IDS.name).value = "";
     byId(IDS.pos).value = "";
 
-    await loadPlayers(teamId);
+    await loadPlayersForTeam(teamId);
     status.textContent = "Leikmaður bættur við ✅";
   } catch (e) {
     console.error(e);
@@ -226,7 +280,7 @@ async function deletePlayerSafe(teamId, playerId){
   try{
     await api.deletePlayer(playerId);
     status.textContent = "Leikmaður eyddur.";
-    await loadPlayers(teamId);
+    await loadPlayersForTeam(teamId);
   } catch(e){
     const msg = String(e?.message || e);
     if (msg.includes("aborted") || msg.includes("AbortError")) return;
@@ -250,20 +304,26 @@ function wire() {
   // ef rosterHooks er ekki til, hættum (UI á bara að vera í Roster view)
   if (!byId(IDS.hook)) return;
 
+  // prevent double-wiring
+  if (__rosterWired) return;
+  __rosterWired = true;
+
   // initial load
-  loadPlayers(getTeamId());
+  loadPlayersForTeam(getTeamId());
 
   // þegar team breytist (frá app-auth.js)
   window.addEventListener("team:changed", (ev) => {
     const teamId = ev?.detail?.teamId || getTeamId();
-    loadPlayers(teamId);
+    loadPlayersForTeam(teamId);
   });
 
   // add player
-  byId(IDS.btn)?.addEventListener("click", () => addPlayer(getTeamId()));
+  byId(IDS.btn)?.addEventListener("click", () => addPlayer(currentTeamId || getTeamId()));
 
-  // auth changes -> reload
-  supabase.auth.onAuthStateChange(() => loadPlayers(getTeamId()));
+  // auth changes -> reload (unsubscribe old first if any)
+  try { __rosterUnsubAuth?.unsubscribe?.(); } catch {}
+  const sub = supabase.auth.onAuthStateChange(() => loadPlayersForTeam(currentTeamId || getTeamId()));
+  __rosterUnsubAuth = sub?.data?.subscription || sub;
 }
 
 wire();
