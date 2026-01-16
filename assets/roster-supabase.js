@@ -162,7 +162,12 @@ function renderPlayers(players) {
 
     const main = row.querySelector('.player-main');
     main?.addEventListener('click', () => {
-      if (window.showAthleteDetail) window.showAthleteDetail(p.id);
+      // Navigate to player page; if custom detail exists, prefer that
+      if (window.showAthleteDetail) {
+        window.showAthleteDetail(p.id);
+        return;
+      }
+      window.location.href = `./player.html?id=${encodeURIComponent(p.id)}`;
     });
 
     const inviteBtn = row.querySelector(`button[data-invite-send="${p.id}"]`);

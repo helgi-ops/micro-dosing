@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Player</title>
+    <link rel="stylesheet" href="./assets/ui.css" />
+    <style>
+      .wrap { max-width: 980px; margin: 0 auto; padding: 18px; }
+      .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+      .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 14px; }
+      .muted { opacity: .75; }
+      .kvs { display:grid; grid-template-columns: 160px 1fr; gap: 6px 10px; }
+      .actions { display:flex; gap:10px; flex-wrap:wrap; }
+      button { cursor:pointer; }
+      .danger { border-color: rgba(255,80,80,.45); }
+      .list { margin: 0; padding-left: 18px; }
+      .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.15); }
+      .spacer { height: 10px; }
+      a { color: inherit; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="row" style="justify-content:space-between;">
+        <div class="row">
+          <a href="./index.html" class="muted">← Back</a>
+          <span class="muted">/</span>
+          <strong id="crumbName">Player</strong>
+        </div>
+        <span id="status" class="muted">Loading…</span>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="card" id="playerCard">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div style="font-size:22px; font-weight:700;" id="playerName">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <strong>Assigned week preview</strong>
+          <span class="muted" id="weeksCount">—</span>
+        </div>
+        <div class="spacer"></div>
+        <ul class="list" id="weeksList"></ul>
+        <div class="muted" id="weeksEmpty" style="display:none;">No assigned week found.</div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="card" id="readinessCard">
+        <div class="row" style="justify-content:space-between;">
+          <strong>Readiness (today)</strong>
+          <span class="muted" id="checkinStatus">Not submitted</span>
+        </div>
+        <div class="spacer"></div>
+        <div class="muted">
+          <p><strong>🧠 What does this mean?</strong><br/>
+          Readiness, soreness, and sleep help determine today’s training load. There are no “right” or “wrong” answers — answer honestly.</p>
+          <p><strong>🔋 Readiness (1–10)</strong><br/>
+          1–3: Very low energy, heavy fatigue<br/>
+          4–6: OK, but not at your best<br/>
+          7–8: Good, ready to train<br/>
+          9–10: Excellent, fully primed</p>
+          <p><strong>🦵 Soreness (1–5)</strong><br/>
+          1: No soreness<br/>
+          2: Mild soreness, no limitation<br/>
+          3: Noticeable soreness, manageable<br/>
+          4: High soreness, affects movement<br/>
+          5: Very sore or painful</p>
+          <p><strong>😴 Sleep (0–2)</strong><br/>
+          0: Poor sleep or very short<br/>
+          1: OK / interrupted<br/>
+          2: Good, restorative sleep</p>
+          <p><strong>ℹ️ Important</strong><br/>
+          Your answers are used to adjust today’s workout, not to judge performance. On low-readiness days, the system prioritizes recovery and long-term progress.</p>
+        </div>
+        <div class="spacer"></div>
+        <div class="row">
+          <label>Readiness (1-10)<br/><input id="readinessInput" type="number" min="1" max="10" /></label>
+          <label>Soreness (1-5)<br/><input id="sorenessInput" type="number" min="1" max="5" /></label>
+          <label>Sleep (0-2)<br/><input id="sleepInput" type="number" min="0" max="2" /></label>
+        </div>
+        <div class="spacer"></div>
+        <button id="saveCheckinBtn">Save check-in</button>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="card" id="cmjCard">
+        <div class="row" style="justify-content:space-between;">
+          <strong>CMJ test</strong>
+          <span class="muted" id="cmjStatus">No test today</span>
+        </div>
+        <div class="spacer"></div>
+        <div class="row">
+          <label>CMJ value (cm)<br/><input id="cmjInput" type="number" min="0" step="0.1" /></label>
+          <div class="muted">
+            <div>All-time best: <span id="cmjBest">—</span></div>
+            <div>Most recent: <span id="cmjRecent">—</span></div>
+            <div>% of best: <span id="cmjPct">—</span></div>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <button id="saveCmjBtn">Save CMJ</button>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="card" id="assignCard">
+        <div class="row" style="justify-content:space-between;">
+          <strong>Today’s workout</strong>
+          <button id="assignWorkoutBtn">Assign workout</button>
+        </div>
+        <div class="spacer"></div>
+        <div id="workoutArea" class="muted">No workout assigned yet.</div>
+      </div>
+    </div>
+
+    <script type="module" src="./assets/player.js"></script>
+  </body>
+</html>

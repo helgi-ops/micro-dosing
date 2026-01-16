@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Login</title>
+    <link rel="stylesheet" href="./assets/ui.css" />
+    <style>
+      .wrap{max-width:520px;margin:0 auto;padding:24px;}
+      .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px;}
+      .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+      input{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.18);color:inherit;}
+      button{padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:inherit;cursor:pointer;}
+      .muted{opacity:.75}
+      .err{color:rgba(255,120,120,.95)}
+      .ok{color:rgba(140,255,170,.95)}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h2>Access</h2>
+      <p class="muted">Sign in to continue. You’ll be routed automatically to Coach or Player.</p>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <strong>Login</strong>
+          <span id="status" class="muted">Checking session…</span>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <label class="muted" for="email">Email</label>
+        <input id="email" type="email" placeholder="you@email.com" autocomplete="email" />
+
+        <div style="height:12px"></div>
+
+        <div class="row">
+          <button id="magicBtn">Send magic link</button>
+          <button id="pwBtn" class="muted">Use password</button>
+        </div>
+
+        <div id="pwArea" style="display:none; margin-top:12px;">
+          <label class="muted" for="password">Password</label>
+          <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" />
+          <div style="height:10px"></div>
+          <div class="row">
+            <button id="signInBtn">Sign in</button>
+            <button id="signUpBtn" class="muted">Sign up</button>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+        <div id="msg" class="muted"></div>
+
+        <div style="height:12px"></div>
+        <button id="signOutBtn" style="display:none;">Sign out</button>
+      </div>
+    </div>
+
+    <script type="module" src="./assets/login.js"></script>
+  </body>
+</html>

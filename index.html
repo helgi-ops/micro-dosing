@@ -4475,29 +4475,29 @@
     }
 
     function refreshLoadSelect() {
-  const loadSelect =
-    document.getElementById('loadProgram') ||
-    document.getElementById('program-load') ||
-    document.querySelector('[data-role="loadProgram"]');
+      const loadSelect =
+        document.getElementById('loadProgram') ||
+        document.getElementById('program-load') ||
+        document.querySelector('[data-role="loadProgram"]');
 
-  if (!loadSelect) {
-    console.warn('[microdose] refreshLoadSelect: loadSelect missing');
-    return;
-  }
+      if (!loadSelect) {
+        // Silent no-op if the selector isn’t present on this page/state
+        return;
+      }
 
-  const map = readSavedPrograms();
-  const current = loadSelect.value;
+      const map = readSavedPrograms();
+      const current = loadSelect.value;
 
-  loadSelect.innerHTML = '<option value="">— Hlaða prógrammi —</option>';
+      loadSelect.innerHTML = '<option value="">— Hlaða prógrammi —</option>';
 
-  Object.keys(map).sort().forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
-    if (name === current) opt.selected = true;
-    loadSelect.appendChild(opt);
-  });
-}
+      Object.keys(map).sort().forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        if (name === current) opt.selected = true;
+        loadSelect.appendChild(opt);
+      });
+    }
 
     function saveCurrentProgram() {
       const name = (saveNameInput.value || '').trim();

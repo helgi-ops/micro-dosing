@@ -10,6 +10,13 @@ import {
   waitForAuthReady,
   getCachedSession
 } from "./dataClient.js";
+import { requireRole } from "./guard.js";
+
+const coachGate = await requireRole(["admin", "coach"]);
+if (!coachGate.ok) {
+  document.body.innerHTML = `<div style="padding:20px">Not authorized for coach view.</div>`;
+  throw new Error("Forbidden");
+}
 
 // Prevent Supabase auth restore aborts (Firefox/Safari) from crashing UI (install once).
 if (!window.__abortRejectionGuardInstalled) {

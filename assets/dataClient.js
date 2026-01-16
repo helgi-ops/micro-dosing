@@ -109,6 +109,126 @@ export const api = {
     if (error) throw error;
   },
 
+  async getPlayer(playerId) {
+    const { data, error } = await supabase
+      .from("players")
+      .select("*")
+      .eq("id", playerId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async getPlayerById(playerId) {
+    return this.getPlayer(playerId);
+  },
+
+  async getAssignedWeekForPlayer(playerId) {
+    const { data, error } = await supabase
+      .from("player_weeks")
+      .select("week_id, is_active, week:weeks(id, title)")
+      .eq("player_id", playerId)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async getWeekPreview(weekId) {
+    const { data, error } = await supabase
+      .from("week_days")
+      .select("week_id, day_index, session_type, title")
+      .eq("week_id", weekId)
+      .order("day_index", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getLatestCheckin(playerId, dateISO) {
+    const { data, error } = await supabase
+      .from("checkins")
+      .select("*")
+      .eq("player_id", playerId)
+      .eq("date", dateISO)
+      .order("created_at", { ascending: false })
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async listCmjHistory(playerId, limit = 50) {
+    const { data, error } = await supabase
+      .from("cmj_tests")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getTodayGeneratedPlan(playerId, dateISO) {
+    const { data, error } = await supabase
+      .from("generated_plans")
+      .select("*")
+      .eq("player_id", playerId)
+      .eq("date", dateISO)
+      .order("created_at", { ascending: false })
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async submitCheckin(payload) {
+    const { playerId, dateISO, readiness, soreness, sleep, readiness_state } = payload;
+    const { data, error } = await supabase
+      .from("checkins")
+      .insert([{
+        player_id: playerId,
+        date: dateISO,
+        readiness,
+        soreness,
+        sleep,
+        readiness_state: readiness_state || null
+      }])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async submitCmj({ playerId, dateISO, cmjValue }) {
+    const { data, error } = await supabase
+      .from("cmj_tests")
+      .insert([{
+        player_id: playerId,
+        date: dateISO,
+        cmj_value: cmjValue
+      }])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async createGeneratedPlan({ playerId, dateISO, weekId, readinessState, workoutPayload, source }) {
+    const { data, error } = await supabase
+      .from("generated_plans")
+      .insert([{
+        player_id: playerId,
+        date: dateISO,
+        week_id: weekId || null,
+        readiness_state: readinessState || null,
+        workout_payload: workoutPayload || {},
+        source: source || "auto_readiness"
+      }])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   async createInvite(teamId, playerId, email) {
     const { data, error } = await supabase
       .from("player_invites")
