@@ -290,7 +290,7 @@ if (!window.__abortRejectionGuardInstalled) {
     });
 
     const saved = (() => { try { return localStorage.getItem("active_panel_id"); } catch { return null; } })();
-    const blocked = new Set(["panel-myplan", "myplan", "panel-my-plan"]);
+    const blocked = new Set(["panel-myplan", "myplan", "panel-my-plan", "myPlan"]);
     const defaultPanel = (!saved || blocked.has(saved)) ? "panel-roster" : saved;
     showPanel(defaultPanel);
   }
