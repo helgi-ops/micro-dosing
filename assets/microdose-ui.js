@@ -1,4 +1,12 @@
-import { initAuth } from "./dataClient.js";
+import {
+  initAuth,
+  api,
+  getMyPlayer,
+  listMyAssignedWeeks,
+  getWeekDays,
+  listMyDayCompletionsForWeek,
+  markDayDone
+} from "./dataClient.js";
 
 (() => {
   // ---------- Supabase bridge & helpers ----------
@@ -179,7 +187,10 @@ import { initAuth } from "./dataClient.js";
     if (!panels.length) console.warn("[nav] No panels found (.app-panel)");
 
     function showPanel(panelId) {
-      const target = document.getElementById(panelId);
+      const target =
+        document.getElementById(panelId) ||
+        panels.find(p => (p.getAttribute('data-panel') || '') === panelId) ||
+        null;
       if (!target) {
         console.warn("[nav] Panel not found:", panelId);
         return;
@@ -327,6 +338,318 @@ import { initAuth } from "./dataClient.js";
     });
   }
   // --- END ROSTER LAYOUT FIX ---------------------------------------------------
+
+  // Program Library (minimal)
+  async function renderTemplateList(teamId) {
+    const host = document.querySelector('#tplList');
+    if (!host) return;
+
+    host.innerHTML = 'Loading...';
+    const { data, error } = await api.listProgramTemplates(teamId);
+    if (error) {
+      host.innerHTML = `<div class="error">${error.message}</div>`;
+      return;
+    }
+
+    if (!data?.length) {
+      host.innerHTML = `<div class="muted">No templates yet.</div>`;
+      return;
+    }
+
+    host.innerHTML = data.map(t => `
+      <div class="row" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.08);">
+        <div>
+          <strong>${t.title}</strong>
+          <div class="muted">${t.goal ?? ''}</div>
+        </div>
+        <button class="btn" data-template-id="${t.id}">Use</button>
+      </div>
+    `).join('');
+  }
+
+  function initProgramLibraryUI() {
+    const btn = document.querySelector('#createTemplateBtn');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+      const teamId = window.__selectedTeamId;
+      const title = document.querySelector('#tplTitle')?.value?.trim();
+      const goal = document.querySelector('#tplGoal')?.value?.trim();
+      const msg = document.querySelector('#tplCreateMsg');
+
+      if (!teamId) { if (msg) msg.textContent = 'Select a team first.'; return; }
+      if (!title) { if (msg) msg.textContent = 'Title required.'; return; }
+
+      if (msg) msg.textContent = 'Creating...';
+      const { error } = await api.createProgramTemplate(teamId, { title, goal });
+      if (error) { if (msg) msg.textContent = error.message; return; }
+
+      if (msg) msg.textContent = 'Created.';
+      await renderTemplateList(teamId);
+    });
+
+    window.addEventListener('team:changed', async (e) => {
+      const teamId = e.detail?.teamId || window.__selectedTeamId;
+      if (teamId) await renderTemplateList(teamId);
+    });
+  }
+
+  async function renderAssignPlayers(teamId) {
+    const host = document.querySelector('#assignPlayersList');
+    if (!host) return;
+
+    host.innerHTML = 'Loading players...';
+    const { data, error } = await api.getPlayers(teamId);
+    if (error) { host.innerHTML = `<div class="error">${error.message}</div>`; return; }
+
+    host.innerHTML = (data || []).map(p => `
+      <label class="checkrow" style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" value="${p.id}" />
+        <span>${p.first_name} ${p.last_name}</span>
+      </label>
+    `).join('') || `<div class="muted">No players.</div>`;
+  }
+
+  function initAssignWeekUI() {
+    const btn = document.querySelector('#assignWeekBtn');
+    if (!btn) return;
+
+    window.addEventListener('team:changed', async (e) => {
+      const teamId = e.detail?.teamId || window.__selectedTeamId;
+      if (teamId) await renderAssignPlayers(teamId);
+    });
+
+    btn.addEventListener('click', async () => {
+      const msg = document.querySelector('#assignMsg');
+      const weekId = window.__currentWeekId;
+      if (!weekId) { if (msg) msg.textContent = 'Publish week first.'; return; }
+
+      const checks = Array.from(document.querySelectorAll('#assignPlayersList input[type="checkbox"]:checked'));
+      const playerIds = checks.map(c => c.value);
+
+      if (!playerIds.length) { if (msg) msg.textContent = 'Select at least one player.'; return; }
+
+      if (msg) msg.textContent = 'Assigning...';
+      const { error } = await api.assignWeekToPlayers(weekId, playerIds);
+      if (error) { if (msg) msg.textContent = error.message; return; }
+
+      if (msg) msg.textContent = 'Assigned ✅';
+    });
+  }
+
+  // ------------------------- ATHLETE: MY PLAN -------------------------
+  const athleteApi = {
+    listMyAssignedWeeks: api?.listMyAssignedWeeks || listMyAssignedWeeks,
+    getWeekDays: api?.getWeekDays || getWeekDays,
+    listMyDayCompletionsForWeek: api?.listMyDayCompletionsForWeek || listMyDayCompletionsForWeek,
+    markDayDone: api?.markDayDone || markDayDone,
+    getMyPlayer: api?.getMyPlayer || getMyPlayer
+  };
+
+  let __mySelectedWeekId = null;
+
+  function formatWeekLabel(w) {
+    return `Week ${w.iso_week} (${w.iso_year})`;
+  }
+
+  function getCompletionMap(completions) {
+    // week_day_id -> latest completion
+    const map = new Map();
+    for (const c of (completions || [])) {
+      if (!map.has(c.week_day_id)) map.set(c.week_day_id, c);
+    }
+    return map;
+  }
+
+  async function renderMyWeeks() {
+    const statusEl = document.querySelector('#myPlanStatus');
+    const listEl = document.querySelector('#myWeeksList');
+    const detailCard = document.querySelector('#myWeekDetailCard');
+
+    if (!listEl || !statusEl) return;
+
+    statusEl.textContent = 'Loading assignments...';
+    listEl.innerHTML = '';
+
+    const { data, error } = await athleteApi.listMyAssignedWeeks();
+    if (error) {
+      statusEl.innerHTML = `<span class="error">${error.message}</span>`;
+      return;
+    }
+
+    const rows = (data || []).filter(r => r.weeks); // joined week
+    if (!rows.length) {
+      statusEl.textContent = 'No assigned weeks yet.';
+      detailCard?.setAttribute('hidden', 'hidden');
+      listEl.innerHTML = `<div class="muted">Ask your coach to assign a week.</div>`;
+      return;
+    }
+
+    statusEl.textContent = 'Select a week to view your plan:';
+
+    listEl.innerHTML = rows.map(r => {
+      const w = r.weeks;
+      return `
+        <div class="row between center day-card">
+          <div>
+            <strong>${formatWeekLabel(w)}</strong>
+            <div class="muted">Status: ${w.status}</div>
+          </div>
+          <button class="btn" data-my-week="${w.id}">Open</button>
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('button[data-my-week]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        __mySelectedWeekId = btn.getAttribute('data-my-week');
+        await renderMyWeekDetail(__mySelectedWeekId);
+      });
+    });
+
+    // Auto-open latest if nothing selected yet
+    if (!__mySelectedWeekId) {
+      __mySelectedWeekId = rows[0].weeks.id;
+      await renderMyWeekDetail(__mySelectedWeekId);
+    }
+  }
+
+  async function renderMyWeekDetail(weekId) {
+    const titleEl = document.querySelector('#myWeekTitle');
+    const daysEl = document.querySelector('#myWeekDays');
+    const detailCard = document.querySelector('#myWeekDetailCard');
+    if (!daysEl || !detailCard) return;
+
+    detailCard.removeAttribute('hidden');
+    daysEl.innerHTML = 'Loading week...';
+
+    const { data, error } = await athleteApi.listMyDayCompletionsForWeek(weekId);
+    if (error) {
+      daysEl.innerHTML = `<div class="error">${error.message}</div>`;
+      return;
+    }
+
+    const days = data?.days || [];
+    const completions = data?.completions || [];
+    const doneMap = getCompletionMap(completions);
+
+    // Fetch week meta from assignments list (cheap: just re-use list and find)
+    const { data: asg, error: aErr } = await athleteApi.listMyAssignedWeeks();
+    let w = null;
+    if (!aErr) {
+      w = (asg || []).map(r => r.weeks).find(x => x?.id === weekId) || null;
+    }
+    if (titleEl) titleEl.textContent = w ? formatWeekLabel(w) : 'Week';
+
+    if (!days.length) {
+      daysEl.innerHTML = `<div class="muted">No days found for this week.</div>`;
+      return;
+    }
+
+    daysEl.innerHTML = days.map(d => {
+      const done = doneMap.get(d.id);
+      const items = Array.isArray(d.items) ? d.items : [];
+      return `
+        <div class="day-card" data-week-day="${d.id}">
+          <div class="row between center">
+            <div>
+              <strong>Day ${d.day_index}: ${d.title}</strong>
+              ${d.notes ? `<div class="muted">${d.notes}</div>` : ``}
+            </div>
+            <div>
+              ${done ? `<span class="done-pill">Done</span>` : `<button class="btn" data-done="${d.id}">Mark done</button>`}
+            </div>
+          </div>
+
+          <div class="day-items">
+            ${items.length ? items.map(it => `
+              <div class="day-item">
+                <strong>${it.name ?? ''}</strong>
+                ${it.sets ? ` — ${it.sets} sets` : ''}${it.reps ? ` × ${it.reps}` : ''}
+                ${it.intensity ? ` — <span class="muted">${it.intensity}</span>` : ''}
+                ${it.rest ? ` — <span class="muted">Rest: ${it.rest}</span>` : ''}
+                ${it.notes ? `<div class="muted">${it.notes}</div>` : ''}
+              </div>
+            `).join('') : `<div class="muted">No items.</div>`}
+          </div>
+
+          ${done ? `
+            <div class="muted" style="margin-top:8px;">
+              Completed: ${new Date(done.completed_at).toLocaleString()}
+              ${done.rpe ? ` • RPE: ${done.rpe}` : ''}
+              ${done.pain != null ? ` • Pain: ${done.pain}` : ''}
+            </div>
+          ` : `
+            <div class="row" style="margin-top:10px;">
+              <input type="number" min="1" max="10" placeholder="RPE (1–10)" data-rpe="${d.id}" style="max-width:140px;">
+              <input type="number" min="0" max="10" placeholder="Pain (0–10)" data-pain="${d.id}" style="max-width:150px;">
+              <input type="text" placeholder="Notes (optional)" data-notes="${d.id}">
+            </div>
+          `}
+        </div>
+      `;
+    }).join('');
+
+    // Wire "Mark done" buttons
+    daysEl.querySelectorAll('button[data-done]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const weekDayId = btn.getAttribute('data-done');
+        const rpe = Number(daysEl.querySelector(`input[data-rpe="${weekDayId}"]`)?.value || '');
+        const pain = Number(daysEl.querySelector(`input[data-pain="${weekDayId}"]`)?.value || '');
+        const notes = daysEl.querySelector(`input[data-notes="${weekDayId}"]`)?.value?.trim();
+
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        const payload = {
+          rpe: Number.isFinite(rpe) && rpe >= 1 && rpe <= 10 ? rpe : null,
+          pain: Number.isFinite(pain) && pain >= 0 && pain <= 10 ? pain : null,
+          notes: notes || null
+        };
+
+        const { error } = await athleteApi.markDayDone(weekDayId, payload);
+        if (error) {
+          btn.disabled = false;
+          btn.textContent = 'Mark done';
+          alert(error.message);
+          return;
+        }
+
+        await renderMyWeekDetail(weekId);
+      });
+    });
+
+    // Refresh button
+    const refreshBtn = document.querySelector('#myWeekRefreshBtn');
+    if (refreshBtn) {
+      refreshBtn.onclick = async () => {
+        refreshBtn.disabled = true;
+        await renderMyWeekDetail(weekId);
+        refreshBtn.disabled = false;
+      };
+    }
+  }
+
+  function initMyPlanUI() {
+    // Re-render when auth state changes or when switching panel
+    window.addEventListener('auth:changed', () => {
+      // Only load if panel exists
+      if (document.querySelector('#myPlanPanel')) renderMyWeeks();
+    });
+
+    // If your app emits panel change events, hook here; otherwise rely on clicking the tab
+    const myPlanNav = Array.from(document.querySelectorAll('button.nav-btn, a.nav-btn'))
+      .find(el => (el.getAttribute('data-panel') || '') === 'myPlan');
+
+    if (myPlanNav) {
+      myPlanNav.addEventListener('click', () => {
+        setTimeout(renderMyWeeks, 0);
+      });
+    }
+
+    // Initial best-effort load (won't do anything if not signed in)
+    setTimeout(renderMyWeeks, 0);
+  }
 
   // Sync player dropdown when roster updates
   window.addEventListener('players:updated', (ev) => {
@@ -1938,6 +2261,12 @@ function updateAllResidualsFromWeek() {
     setTimeout(forceRosterAuthAboveAddPlayer, 800);
     installRosterLayoutObserver();
     installRosterTabClickHook();
+    initProgramLibraryUI();
+    initMyPlanUI();
+    if (window.__selectedTeamId) {
+      renderTemplateList(window.__selectedTeamId);
+    }
+    initAssignWeekUI();
 
     if (supabaseClient && supabaseClient.auth?.onAuthStateChange) {
       supabaseClient.auth.onAuthStateChange(async () => {

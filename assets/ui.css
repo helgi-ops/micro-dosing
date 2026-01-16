@@ -192,6 +192,32 @@ body{
   padding: 0 10px;
 }
 
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; gap: 10px; }
+.between { justify-content: space-between; }
+.center { align-items: center; }
+.muted { opacity: 0.75; }
+.error { color: #ff8a8a; }
+
+.day-card {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(255,255,255,0.04);
+}
+
+.day-items { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.day-item { opacity: 0.95; }
+
+.done-pill {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,200,120,0.35);
+  background: rgba(0,200,120,0.10);
+  font-size: 12px;
+}
+
 #rosterHooks{
   position: sticky;
   top: 12px;
