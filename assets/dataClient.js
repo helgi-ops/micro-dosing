@@ -441,3 +441,28 @@ export async function initAuth() {
 
   return _session;
 }
+
+// Auth state cache (Supabase v2 safe)
+let __authReady = false;
+let __authSession = null;
+
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+    __authReady = true;
+    __authSession = session;
+    window.dispatchEvent(new CustomEvent('auth:ready', { detail: { session } }));
+  }
+  if (event === 'SIGNED_OUT') {
+    __authReady = true;
+    __authSession = null;
+    window.dispatchEvent(new CustomEvent('auth:ready', { detail: { session: null } }));
+  }
+});
+
+export function getCachedSession() {
+  return __authSession;
+}
+
+export function isAuthReady() {
+  return __authReady;
+}

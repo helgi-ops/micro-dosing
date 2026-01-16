@@ -1,5 +1,5 @@
 // assets/roster-supabase.js
-import { api, supabase } from "./dataClient.js";
+import { api, supabase, getCachedSession, isAuthReady } from "./dataClient.js";
 
 // DEBUG proof-of-life
 window.__ROSTER_SUPABASE_LOADED_AT = new Date().toISOString();
@@ -61,18 +61,9 @@ function getInviteStatus(p) {
   };
 }
 
-async function isSignedIn() {
-  try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.warn("[roster-supabase] getSession error:", error);
-      return false;
-    }
-    return !!data?.session?.user;
-  } catch (e) {
-    console.warn("[roster-supabase] getSession threw:", e);
-    return false;
-  }
+function isSignedInSync() {
+  const s = getCachedSession();
+  return !!s?.user;
 }
 
 function ensureRosterUI() {
@@ -212,8 +203,13 @@ async function loadPlayers(teamId) {
   const status = byId(IDS.status);
   if (!status) return;
 
+  if (!isAuthReady()) {
+    status.textContent = "Athuga innskráningu…";
+    return;
+  }
+
   // þarf login (RLS)
-  const signedIn = await isSignedIn();
+  const signedIn = isSignedInSync();
   if (!signedIn) {
     status.textContent = "Skráðu þig inn til að sjá lið og leikmenn. (session=null eða error)";
     renderPlayers([]);
@@ -249,7 +245,7 @@ async function addPlayer(teamId) {
   const status = byId(IDS.status);
   if (!status) return;
 
-  if (!(await isSignedIn())) return (status.textContent = "Þú þarft að vera skráður inn.");
+  if (!isSignedInSync()) return (status.textContent = "Þú þarft að vera skráður inn.");
 
   if (!teamId) return (status.textContent = "Veldu lið (efst) fyrst.");
 
@@ -281,7 +277,7 @@ async function addPlayer(teamId) {
 async function deletePlayerSafe(teamId, playerId){
   const status = byId(IDS.status);
   if (!status) return;
-  if (!(await isSignedIn())) return (status.textContent = "Þarft að vera innskráður.");
+  if (!isSignedInSync()) return (status.textContent = "Þarft að vera innskráður.");
   if (!teamId || !playerId) return;
   if (!confirm("Eyða leikmanni?")) return;
   try{
@@ -331,6 +327,10 @@ function wire() {
   try { __rosterUnsubAuth?.unsubscribe?.(); } catch {}
   const sub = supabase.auth.onAuthStateChange(() => loadPlayersForTeam(currentTeamId || getTeamId()));
   __rosterUnsubAuth = sub?.data?.subscription || sub;
+
+  window.addEventListener('auth:ready', () => {
+    loadPlayersForTeam(currentTeamId || getTeamId());
+  });
 }
 
 wire();
