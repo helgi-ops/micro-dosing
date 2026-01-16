@@ -440,10 +440,15 @@ let __resolveAuthReady;
 const __authReadyPromise = new Promise((resolve) => { __resolveAuthReady = resolve; });
 
 supabase.auth.onAuthStateChange((event, session) => {
-  if (event === "INITIAL_SESSION") {
+  // Mark ready on first event if not already (some environments skip INITIAL_SESSION)
+  if (!__authReady) {
     __authReady = true;
-    __cachedSession = session || null;
     __resolveAuthReady?.(session || null);
+    window.dispatchEvent(new CustomEvent("auth:ready", { detail: { session: session || null } }));
+  }
+
+  if (event === "INITIAL_SESSION") {
+    __cachedSession = session || null;
     window.dispatchEvent(new CustomEvent("auth:ready", { detail: { session: __cachedSession } }));
     return;
   }

@@ -185,7 +185,6 @@ if (!window.__abortRejectionGuardInstalled) {
       if (!window.__authStatusRetryScheduled) {
         window.__authStatusRetryScheduled = true;
         setTimeout(() => {
-          window.__authStatusRetryScheduled = false;
           loadSessionAndRenderAuthStatus();
         }, 150);
       }
