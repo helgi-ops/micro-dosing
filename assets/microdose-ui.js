@@ -188,6 +188,19 @@ import {
     if (!panels.length) console.warn("[nav] No panels found (.app-panel)");
 
     function showPanel(panelId) {
+      // allow legacy names -> canonical panel ids
+      const alias = {
+        "weekbuilder": "panel-weekbuilder",
+        "week-builder": "panel-weekbuilder",
+        "panel-week-builder": "panel-weekbuilder",
+        "monitoring": "panel-monitoring",
+        "reports": "panel-reports",
+        "roster": "panel-roster",
+        "myplan": "panel-myplan",
+        "my-plan": "panel-myplan"
+      };
+      panelId = alias[panelId] || panelId;
+
       const target =
         document.getElementById(panelId) ||
         panels.find(p => (p.getAttribute('data-panel') || '') === panelId) ||
