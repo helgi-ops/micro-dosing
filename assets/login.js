@@ -61,35 +61,6 @@ async function init() {
     }
   });
 
-  $("pwBtn").onclick = () => {
-    const show = $("pwArea").style.display === "none";
-    $("pwArea").style.display = show ? "block" : "none";
-  };
-
-  $("magicBtn").onclick = async () => {
-    try {
-      setMsg("");
-      const email = $("email").value.trim();
-      if (!email) throw new Error("Enter your email.");
-
-      setStatus("Sending magic link…");
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/") + "login.html"
-        }
-      });
-      if (error) throw error;
-
-      setStatus("Magic link sent");
-      setMsg("Check your email and open the link to sign in.", "ok");
-    } catch (e) {
-      setStatus("Error");
-      setMsg(e?.message || String(e), "err");
-    }
-  };
-
   $("signInBtn").onclick = async () => {
     try {
       setMsg("");
