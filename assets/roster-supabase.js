@@ -1,6 +1,10 @@
 // assets/roster-supabase.js
 import { api, supabase } from "./dataClient.js";
 
+// DEBUG proof-of-life
+window.__ROSTER_SUPABASE_LOADED_AT = new Date().toISOString();
+console.log("[roster-supabase] loaded", window.__ROSTER_SUPABASE_LOADED_AT);
+
 const IDS = {
   hook: "rosterHooks",      // UI á að fara hingað (Roster view)
   status: "rosterStatus",
@@ -60,10 +64,13 @@ function getInviteStatus(p) {
 async function isSignedIn() {
   try {
     const { data, error } = await supabase.auth.getSession();
-    if (error) return false;
+    if (error) {
+      console.warn("[roster-supabase] getSession error:", error);
+      return false;
+    }
     return !!data?.session?.user;
   } catch (e) {
-    // Algengt þegar auth flow abortar (redirect / session restore)
+    console.warn("[roster-supabase] getSession threw:", e);
     return false;
   }
 }
@@ -208,7 +215,7 @@ async function loadPlayers(teamId) {
   // þarf login (RLS)
   const signedIn = await isSignedIn();
   if (!signedIn) {
-    status.textContent = "Skráðu þig inn til að sjá lið og leikmenn.";
+    status.textContent = "Skráðu þig inn til að sjá lið og leikmenn. (session=null eða error)";
     renderPlayers([]);
     updateAddState(signedIn, teamId);
     return;
