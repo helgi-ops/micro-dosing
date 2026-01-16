@@ -11,22 +11,20 @@ import {
   getCachedSession
 } from "./dataClient.js";
 
-(() => {
-  // --- SAFETY NET: Firefox/Safari can Abort getSession/session-restore promises.
-  // Prevent a single aborted promise from killing the whole UI.
+// Prevent Supabase auth restore aborts (Firefox/Safari) from crashing UI (install once).
+if (!window.__abortRejectionGuardInstalled) {
+  window.__abortRejectionGuardInstalled = true;
   window.addEventListener("unhandledrejection", (event) => {
     const r = event.reason;
-    const msg = String(r?.message || r || "");
     const name = String(r?.name || "");
-    if (
-      msg.includes("The operation was aborted") ||
-      msg.includes("AbortError") ||
-      name === "AbortError"
-    ) {
-      event.preventDefault(); // swallow
+    const msg = String(r?.message || r || "");
+    if (name === "AbortError" || msg.includes("The operation was aborted")) {
+      event.preventDefault();
     }
   });
+}
 
+(() => {
   // ---------- Supabase bridge & helpers ----------
   // Always use the module client (do NOT rely on window.*)
   const supabaseClient = supabase;
