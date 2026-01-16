@@ -3,243 +3,93 @@ import { api, supabase, waitForAuthReady, getCachedSession } from "./dataClient.
 
 function el(id) { return document.getElementById(id); }
 
-function resetTeamSelection() {
-  try {
-    localStorage.removeItem("selectedTeamId");
-    localStorage.removeItem("selected_team_id");
-  } catch (_) {}
-  window.__selectedTeamId = "";
-  window.currentTeamId = "";
+async function fetchTeamsForUser(session) {
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("team_id, role, teams(id,name)")
+    .eq("user_id", session.user.id)
+    .in("role", ["coach", "admin"]);
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    id: row.teams?.id || row.team_id,
+    name: row.teams?.name || row.team_id
+  })).filter(t => t.id);
+}
 
-  const authSel = el("authBoxTeamSelect");
-  const topSel = document.getElementById("teamSelectTopbar"); // ✅ var "teamSelect"
-  const placeholder = `<option value="">— Veldu lið —</option>`;
-  if (authSel) {
-    authSel.innerHTML = placeholder;
-    authSel.value = "";
-    el("authBoxTeamStatus") && (el("authBoxTeamStatus").textContent = "");
+function setActiveTeam(teamId) {
+  window.__selectedTeamId = teamId || "";
+  window.currentTeamId = teamId || "";
+  try {
+    localStorage.setItem("selectedTeamId", teamId || "");
+    localStorage.setItem("selected_team_id", teamId || "");
+  } catch (_) {}
+  const topSel = document.getElementById("teamSelectTopbar");
+  if (topSel) topSel.value = teamId || "";
+  window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: teamId || "" } }));
+  window.dispatchEvent(new Event("team:changed"));
+}
+
+async function ensureSessionOrRedirect() {
+  await waitForAuthReady?.();
+  const session = getCachedSession?.() || (await supabase.auth.getSession()).data?.session;
+  if (!session) {
+    window.location.href = "./login.html";
+    return null;
   }
-  if (topSel) {
-    topSel.innerHTML = placeholder;
-    topSel.value = "";
+  return session;
+}
+
+async function loadTeams() {
+  const session = await ensureSessionOrRedirect();
+  if (!session) return;
+
+  const topSel = document.getElementById("teamSelectTopbar");
+  if (!topSel) return;
+
+  const placeholder = `<option value="">— Veldu lið —</option>`;
+  topSel.innerHTML = placeholder;
+
+  let teams = [];
+  try {
+    teams = await fetchTeamsForUser(session);
+  } catch (e) {
+    console.error("Teams load failed:", e);
+  }
+
+  const opts = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+  topSel.innerHTML = placeholder + opts;
+
+  let selected = "";
+  if (teams.length === 1) {
+    selected = teams[0].id;
+  } else {
+    const stored = localStorage.getItem("selectedTeamId") || "";
+    if (stored && teams.some(t => t.id === stored)) selected = stored;
+  }
+
+  if (selected) {
+    topSel.value = selected;
+    setActiveTeam(selected);
+  } else {
+    setActiveTeam("");
   }
 }
 
-function ensureAuthUI(hostEl) {
-  // Býr til lítið auth box ef það er ekki til
-  const old = document.getElementById("authBox");
-if (old) old.remove();
-
-  const host =
-    hostEl ||
-    document.getElementById("rosterHooks");
-
-  if (!host) return; // birta aðeins í Roster view
-
-  const box = document.createElement("div");
-  box.id = "authBox";
-  box.style.cssText =
-    "margin:12px 0; padding:12px; border:1px solid rgba(255,255,255,.12); border-radius:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;";
-
-  box.innerHTML = `
-    <input id="authBoxEmail" type="email" placeholder="email fyrir innskráningu"
-      style="min-width:240px; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit;" />
-    <button id="authBoxSignIn" style="padding:10px 14px; border-radius:10px;">Send login link</button>
-    <button id="authBoxSignOut" style="padding:10px 14px; border-radius:10px;">Sign out</button>
-    <span id="authBoxStatus" style="opacity:.85;"></span>
-
-    <span style="margin-left:10px; opacity:.7;">Team:</span>
-    <select id="authBoxTeamSelect"
-      style="min-width:240px; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:transparent; color:inherit;">
-      <option value="">— Veldu lið —</option>
-    </select>
-    <span id="authBoxTeamStatus" style="opacity:.75;"></span>
-  `;
-
-  host.prepend(box);
-
-  document.getElementById("authBoxSignIn").addEventListener("click", async () => {
-    const email = document.getElementById("authBoxEmail").value.trim();
-    if (!email) return (document.getElementById("authBoxStatus").textContent = "Sláðu inn email.");
-    document.getElementById("authBoxStatus").textContent = "Sendi login link…";
-    try {
-      await api.signInWithEmail(email);
-      document.getElementById("authBoxStatus").textContent = "Login link sent á email.";
-      await loadTeams();
-    } catch (e) {
-      console.error(e);
-      document.getElementById("authBoxStatus").textContent = "Villa: " + (e?.message || e);
-    }
-  });
-
-  document.getElementById("authBoxSignOut").addEventListener("click", async () => {
-    document.getElementById("authBoxStatus").textContent = "Signing out…";
-    try {
-      await api.signOut();
-      document.getElementById("authBoxStatus").textContent = "Signed out.";
-      await loadTeams();
-    } catch (e) {
-      console.error(e);
-      document.getElementById("authBoxStatus").textContent = "Villa: " + (e?.message || e);
-    }
-  });
-
-  document.getElementById("authBoxTeamSelect").addEventListener("change", () => {
-    const v = document.getElementById("authBoxTeamSelect").value;
-    localStorage.setItem("selectedTeamId", v || "");
-    localStorage.setItem("selected_team_id", v || "");
-    window.__selectedTeamId = v || "";
-    window.currentTeamId = v || "";
-    document.getElementById("authBoxTeamStatus").textContent = v ? "Valið." : "";
-    window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: v || "" } }));
-    window.dispatchEvent(new Event("team:changed"));
-    const topSel = document.getElementById("teamSelectTopbar");
-    if (topSel) topSel.value = v || "";
-  });
-
-  // Sync from topbar select into auth box
+document.addEventListener("DOMContentLoaded", () => {
   const topSel = document.getElementById("teamSelectTopbar");
   if (topSel && !topSel.dataset.bound) {
     topSel.dataset.bound = "1";
     topSel.addEventListener("change", () => {
-      const v = topSel.value || "";
-      const authSel = document.getElementById("authBoxTeamSelect");
-      if (authSel) {
-        authSel.value = v;
-        authSel.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+      setActiveTeam(topSel.value || "");
     });
   }
-}
+  loadTeams();
+});
 
-// Handle magic link landing (#access_token=...) before loading teams
-async function settleAuthFromUrl() {
-  if (location.hash && location.hash.includes("access_token=")) {
-    await new Promise(r => setTimeout(r, 80));
-    // Supabase v2-safe: do not call getSession here (can abort)
-    await waitForAuthReady();
-    history.replaceState({}, document.title, location.pathname + location.search);
-  }
-}
-
-async function updateAuthStatus() {
-  const session = await api.getSession();
-  const user = session?.user;
-
-  const statusEl = el("authBoxStatus");
-  if (statusEl) {
-    statusEl.textContent = user ? `Signed in: ${user.email}` : "Not signed in.";
-  }
-
-  if (user) acceptPendingInvites();
-  if (!user) resetTeamSelection();
-}
-
-async function acceptPendingInvites() {
-  try {
-    const invites = await api.getMyInvites();
-    for (const inv of invites) {
-      await api.acceptInvite(inv.id);
-    }
-  } catch (e) {
-    console.warn("acceptPendingInvites failed:", e?.message || e);
-  }
-}
-
-async function loadTeams() {
-  try {
-    await updateAuthStatus();
-    const session = await api.getSession();
-    if (!session?.user) {
-      resetTeamSelection();
-      return;
-    }
-
-    if (el("authBoxTeamStatus")) el("authBoxTeamStatus").textContent = "Hleð liðum…";
-
-    let teams = await api.getTeams();
-
-    const stored = localStorage.getItem("selectedTeamId") || "";
-    const hasStored = teams.some(t => t.id === stored);
-
-    // Fallback: if no teams returned but we have a stored id, surface it as an option
-    if (!teams.length && stored) {
-      teams = [{ id: stored, name: stored }];
-    }
-
-    let selected = "";
-    if (hasStored) selected = stored;
-    else if (teams.length) selected = teams[0].id;
-
-    const selectEl = el("authBoxTeamSelect");
-    if (selectEl) {
-      selectEl.innerHTML =
-        `<option value="">— Veldu lið —</option>` +
-        teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
-      selectEl.value = selected || "";
-    }
-
-    window.__selectedTeamId = selected || "";
-    window.currentTeamId = selected || "";
-
-    const statusEl = el("authBoxTeamStatus");
-    if (statusEl) {
-      statusEl.textContent = teams.length ? "Lið hlaðin." : "Engin lið (athuga RLS / team_members).";
-    }
-
-    const topSel = document.getElementById("teamSelectTopbar");
-    if (topSel && selectEl) {
-      topSel.innerHTML = selectEl.innerHTML;
-      topSel.value = selectEl.value;
-    }
-
-    try {
-      localStorage.setItem("selectedTeamId", selected || "");
-      localStorage.setItem("selected_team_id", selected || "");
-    } catch (_) {}
-
-    window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: selected || "" } }));
-  } catch (e) {
-    const msg = String(e?.message || e);
-    if (msg.includes("aborted") || msg.includes("AbortError")) {
-      setTimeout(loadTeamsSafely, 120);
-      return;
-    }
-    console.error("Teams load failed:", e);
-    el("authBoxTeamStatus").textContent = "Teams error: " + msg;
-  }
-}
-
-let teamsLoadInFlight = null;
-async function loadTeamsSafely() {
-  if (teamsLoadInFlight) return teamsLoadInFlight;
-
-  teamsLoadInFlight = (async () => {
-    try {
-      await loadTeams();
-    } finally {
-      teamsLoadInFlight = null;
-    }
-  })();
-
-  return teamsLoadInFlight;
-}
-
-// React to auth changes
 supabase.auth.onAuthStateChange(async (_event, session) => {
-  await loadTeamsSafely();
+  if (!session) {
+    window.location.href = "./login.html";
+    return;
+  }
+  await loadTeams();
 });
-
-const host = document.getElementById("rosterHooks");
-ensureAuthUI(host);
-document.addEventListener("DOMContentLoaded", () => {
-  settleAuthFromUrl().then(loadTeamsSafely);
-  // Safety retry after short delay in case session arrives late
-  setTimeout(loadTeamsSafely, 200);
-});
-
-// Expose helper so other modules (roster-supabase) can remount after DOM changes
-window.renderAuthBox = function(target){
-  ensureAuthUI(target);
-  settleAuthFromUrl().then(loadTeamsSafely);
-};

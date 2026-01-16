@@ -10,6 +10,7 @@ import {
   waitForAuthReady,
   getCachedSession
 } from "./dataClient.js";
+import { DAY_TYPE_OPTIONS, normalizeDayType, getDayTypeProfile } from "./dayTypeProfiles.js";
 import { requireRole } from "./guard.js";
 
 const coachGate = await requireRole(["admin", "coach"]);
@@ -44,7 +45,7 @@ if (!window.__abortRejectionGuardInstalled) {
     DAYS.forEach(d => {
       const src = ws[d] || {};
       out[d] = {
-        dayType: src.dayType || '',
+        dayType: normalizeDayType(src.dayType || ''),
         load: src.load || '',
         exposure: src.exposure || ''
       };
@@ -53,21 +54,21 @@ if (!window.__abortRejectionGuardInstalled) {
   }
 
   function mapDayTypeToScheduleValue(dayType) {
-    const t = (dayType || '').toLowerCase();
-    if (t.includes('leik')) return 'game';
-    if (t.includes('frí') || t.includes('frí') || t.includes('endur')) return 'off';
-    if (t.includes('tækni')) return 'skill_session';
-    if (t.includes('ferð')) return 'off';
+    const norm = normalizeDayType(dayType || '');
+    const t = norm.toLowerCase();
+    if (t === 'game') return 'game';
+    if (t === 'day-off') return 'off';
+    if (t === 'recovery') return 'recovery';
+    if (['restart','mechanical','locomotive','top-up'].includes(t)) return 'practice';
     return 'practice';
   }
 
   function mapScheduleValueToDayType(val) {
     const v = (val || '').toLowerCase();
-    if (v === 'game') return 'Leikur';
-    if (v === 'off') return 'Frí';
-    if (v === 'skill_session') return 'Tækni';
-    if (v === 'travel') return 'Ferð';
-    return 'Æfing';
+    if (v === 'game') return 'Game';
+    if (v === 'off') return 'Day-Off';
+    if (v === 'recovery') return 'Recovery';
+    return 'Mechanical';
   }
 
   function getWeekStateKey() {
@@ -101,12 +102,6 @@ if (!window.__abortRejectionGuardInstalled) {
       const top = document.getElementById("teamSelectTopbar");
       if (top && top.value === teamId && top.selectedOptions?.[0]) {
         const name = top.selectedOptions[0].textContent?.trim();
-        if (name && !name.startsWith("—")) return name;
-      }
-
-      const authSel = document.getElementById("authBoxTeamSelect");
-      if (authSel && authSel.value === teamId && authSel.selectedOptions?.[0]) {
-        const name = authSel.selectedOptions[0].textContent?.trim();
         if (name && !name.startsWith("—")) return name;
       }
 
@@ -517,10 +512,12 @@ if (!window.__abortRejectionGuardInstalled) {
       if (!playerIds.length) { if (msg) msg.textContent = 'Select at least one player.'; return; }
 
       if (msg) msg.textContent = 'Assigning...';
-      const { error } = await api.assignWeekToPlayers(weekId, playerIds);
-      if (error) { if (msg) msg.textContent = error.message; return; }
-
-      if (msg) msg.textContent = 'Assigned ✅';
+      try {
+        await api.assignWeekToPlayers(weekId, playerIds);
+        if (msg) msg.textContent = 'Assigned ✅';
+      } catch (error) {
+        if (msg) msg.textContent = error?.message || String(error);
+      }
     });
   }
 
@@ -779,8 +776,16 @@ if (!window.__abortRejectionGuardInstalled) {
     const ws = {};
     document.querySelectorAll('.week-builder-grid .wb-card[data-day]').forEach(card => {
       const day = card.getAttribute('data-day');
-      const dayType = card.querySelector('[data-field="dayType"]')?.value || '';
-      const load = card.querySelector('[data-field="load"]')?.value || '';
+      const dayType = normalizeDayType(card.querySelector('[data-field="dayType"]')?.value || '');
+      const profile = getDayTypeProfile(dayType);
+      const loadSel = card.querySelector('[data-field="load"]');
+      if (loadSel) {
+        Array.from(loadSel.options).forEach(opt => {
+          opt.disabled = !profile.allowedLoads?.includes(opt.textContent || opt.value);
+        });
+      }
+      let load = (loadSel?.value || '') || profile.defaultLoad || '';
+      if (!profile.allowedLoads?.includes(load)) load = profile.defaultLoad || '';
       const exposure = card.querySelector('[data-field="exposure"]')?.value || '';
       ws[day] = { dayType, load, exposure };
     });
@@ -795,8 +800,20 @@ if (!window.__abortRejectionGuardInstalled) {
       const dayTypeSel = card.querySelector('[data-field="dayType"]');
       const loadSel = card.querySelector('[data-field="load"]');
       const expSel = card.querySelector('[data-field="exposure"]');
-      if (dayTypeSel) dayTypeSel.value = s.dayType || '';
-      if (loadSel) loadSel.value = s.load || '';
+      if (dayTypeSel) {
+        dayTypeSel.value = normalizeDayType(s.dayType || '');
+        // enforce profile defaults/allowed on set
+        const profile = getDayTypeProfile(dayTypeSel.value);
+        if (loadSel) {
+          Array.from(loadSel.options).forEach(opt => {
+            opt.disabled = !profile.allowedLoads?.includes(opt.textContent || opt.value);
+          });
+          const currentLoad = s.load || profile.defaultLoad || '';
+          loadSel.value = profile.allowedLoads?.includes(currentLoad) ? currentLoad : (profile.defaultLoad || '');
+        }
+      } else if (loadSel) {
+        loadSel.value = s.load || '';
+      }
       if (expSel) expSel.value = s.exposure || '';
     });
   }
@@ -818,8 +835,14 @@ if (!window.__abortRejectionGuardInstalled) {
       const sched = document.getElementById(`week-plan-${idx}-schedule`);
       const load = document.getElementById(`week-plan-${idx}-load`);
       const s = state[d] || {};
-      if (sched) sched.value = mapDayTypeToScheduleValue(s.dayType || 'Æfing');
-      if (load) load.value = s.load || '';
+      if (sched) sched.value = mapDayTypeToScheduleValue(s.dayType || 'Mechanical');
+      if (load) {
+        const profile = getDayTypeProfile(s.dayType || 'Mechanical');
+        Array.from(load.options).forEach(opt => {
+          opt.disabled = !profile.allowedLoads?.includes(opt.textContent || opt.value);
+        });
+        load.value = profile.allowedLoads?.includes(s.load || '') ? s.load || '' : (profile.defaultLoad || '');
+      }
     });
   }
 
@@ -839,7 +862,22 @@ if (!window.__abortRejectionGuardInstalled) {
 
   // Bind grid changes
   document.addEventListener('DOMContentLoaded', () => {
-    document.querySelector('.week-builder-grid')?.addEventListener('change', syncFromBuilder);
+    document.querySelector('.week-builder-grid')?.addEventListener('change', (e) => {
+      const card = e.target?.closest?.('.wb-card');
+      if (card && e.target?.getAttribute('data-field') === 'dayType') {
+        // enforce profile on change
+        const dayTypeSel = card.querySelector('[data-field="dayType"]');
+        const loadSel = card.querySelector('[data-field="load"]');
+        if (dayTypeSel && loadSel) {
+          const profile = getDayTypeProfile(dayTypeSel.value);
+          Array.from(loadSel.options).forEach(opt => {
+            opt.disabled = !profile.allowedLoads?.includes(opt.textContent || opt.value);
+          });
+          if (!profile.allowedLoads?.includes(loadSel.value)) loadSel.value = profile.defaultLoad || '';
+        }
+      }
+      syncFromBuilder();
+    });
     document.getElementById('microdose-week-grid')?.addEventListener('change', syncFromMicrodoseGrid);
     // initial state load
     weekState = loadWeekState();

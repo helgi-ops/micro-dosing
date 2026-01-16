@@ -61,35 +61,54 @@
           <span class="muted" id="checkinStatus">Not submitted</span>
         </div>
         <div class="spacer"></div>
-        <div class="muted">
-          <p><strong>🧠 What does this mean?</strong><br/>
-          Readiness, soreness, and sleep help determine today’s training load. There are no “right” or “wrong” answers — answer honestly.</p>
-          <p><strong>🔋 Readiness (1–10)</strong><br/>
-          1–3: Very low energy, heavy fatigue<br/>
-          4–6: OK, but not at your best<br/>
-          7–8: Good, ready to train<br/>
-          9–10: Excellent, fully primed</p>
-          <p><strong>🦵 Soreness (1–5)</strong><br/>
-          1: No soreness<br/>
-          2: Mild soreness, no limitation<br/>
-          3: Noticeable soreness, manageable<br/>
-          4: High soreness, affects movement<br/>
-          5: Very sore or painful</p>
-          <p><strong>😴 Sleep (0–2)</strong><br/>
-          0: Poor sleep or very short<br/>
-          1: OK / interrupted<br/>
-          2: Good, restorative sleep</p>
-          <p><strong>ℹ️ Important</strong><br/>
-          Your answers are used to adjust today’s workout, not to judge performance. On low-readiness days, the system prioritizes recovery and long-term progress.</p>
+        <div class="readiness-body">
+          <div class="readiness-summary muted">Answer honestly — this adjusts today’s training load.</div>
+          <div class="readiness-tiles">
+            <div class="tile">
+              <h4>Readiness</h4>
+              <div class="sub">How ready you feel right now (1–10)</div>
+              <select id="readinessInput" class="tile-select">
+                <option value="" disabled selected>Select readiness…</option>
+                <option value="1">1 — Very low energy / heavy fatigue</option>
+                <option value="2">2 — Very low energy / heavy fatigue</option>
+                <option value="3">3 — Very low energy / heavy fatigue</option>
+                <option value="4">4 — OK / not at your best</option>
+                <option value="5">5 — OK / not at your best</option>
+                <option value="6">6 — OK / not at your best</option>
+                <option value="7">7 — Good / ready to train</option>
+                <option value="8">8 — Good / ready to train</option>
+                <option value="9">9 — Excellent / fully primed</option>
+                <option value="10">10 — Excellent / fully primed</option>
+              </select>
+            </div>
+            <div class="tile">
+              <h4>Soreness</h4>
+              <div class="sub">Muscle soreness today (1–5)</div>
+              <select id="sorenessInput" class="tile-select">
+                <option value="" disabled selected>Select soreness…</option>
+                <option value="1">1 — No soreness</option>
+                <option value="2">2 — Mild soreness (no limitation)</option>
+                <option value="3">3 — Noticeable soreness (manageable)</option>
+                <option value="4">4 — High soreness (affects movement)</option>
+                <option value="5">5 — Very sore or painful</option>
+              </select>
+            </div>
+            <div class="tile">
+              <h4>Sleep</h4>
+              <div class="sub">Last night (0–2)</div>
+              <div class="seg" id="sleepSeg">
+                <button type="button" data-sleep="0">0 Poor</button>
+                <button type="button" data-sleep="1">1 OK</button>
+                <button type="button" data-sleep="2">2 Good</button>
+              </div>
+              <input id="sleepInput" type="hidden" value="" />
+            </div>
+          </div>
+          <div class="actions-row">
+            <button id="saveCheckinBtn">Save check-in</button>
+            <span class="muted" id="checkinStatusInline"></span>
+          </div>
         </div>
-        <div class="spacer"></div>
-        <div class="row">
-          <label>Readiness (1-10)<br/><input id="readinessInput" type="number" min="1" max="10" /></label>
-          <label>Soreness (1-5)<br/><input id="sorenessInput" type="number" min="1" max="5" /></label>
-          <label>Sleep (0-2)<br/><input id="sleepInput" type="number" min="0" max="2" /></label>
-        </div>
-        <div class="spacer"></div>
-        <button id="saveCheckinBtn">Save check-in</button>
       </div>
 
       <div class="spacer"></div>

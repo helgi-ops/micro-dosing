@@ -84,7 +84,7 @@ function ensureRosterUI() {
     </section>
 
     <section class="roster-auth">
-      <div id="authBoxMount"></div>
+      <!-- auth UI removed; login handled via login.html -->
     </section>
 
     <div id="${IDS.status}" style="margin:10px 0; opacity:.85;"></div>

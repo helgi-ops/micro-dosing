@@ -27,6 +27,15 @@ function setPill(id, txt) {
   if (el) el.textContent = txt ?? "—";
 }
 
+function syncSleepSeg(val) {
+  const buttons = Array.from(document.querySelectorAll('#sleepSeg button'));
+  buttons.forEach(btn => {
+    btn.classList.toggle('is-active', String(btn.dataset.sleep) === String(val));
+  });
+  const sleepInput = $("sleepInput");
+  if (sleepInput) sleepInput.value = val ?? "";
+}
+
 function qs(name) {
   const u = new URL(window.location.href);
   return u.searchParams.get(name);
@@ -230,11 +239,12 @@ async function main() {
       $("readinessInput").value = checkin.readiness ?? "";
       $("sorenessInput").value = checkin.soreness ?? "";
       $("sleepInput").value = checkin.sleep ?? "";
+      syncSleepSeg(checkin.sleep);
     }
 
-    const cmjHistory = await api.listCmjHistory(playerId, 50);
-    const cmjBestVal = cmjHistory.length ? Math.max(...cmjHistory.map(c => c.cmj_value || 0)) : null;
-    const cmjRecentVal = cmjHistory.length ? cmjHistory[0].cmj_value : null;
+    const cmjSessions = await api.getCmjSessionHistory ? await api.getCmjSessionHistory(playerId, 50) : [];
+    const cmjBestVal = cmjSessions.length ? Math.max(...cmjSessions.map(c => c.avg_value || 0)) : null;
+    const cmjRecentVal = cmjSessions.length ? cmjSessions[0].avg_value : null;
     $("cmjBest").textContent = cmjBestVal ?? "—";
     $("cmjRecent").textContent = cmjRecentVal ?? "—";
 
@@ -251,10 +261,15 @@ async function main() {
 
     $("saveCheckinBtn").onclick = async () => {
       try {
-        const readiness = Number($("readinessInput").value);
-        const soreness = Number($("sorenessInput").value);
-        const sleep = Number($("sleepInput").value);
-        if (!readiness || !soreness && soreness !== 0 || sleep === null) throw new Error("Fill all fields.");
+        const readinessRaw = $("readinessInput").value;
+        const sorenessRaw = $("sorenessInput").value;
+        const sleepRaw = $("sleepInput").value;
+        if (!readinessRaw) throw new Error("Select readiness");
+        if (!sorenessRaw) throw new Error("Select soreness");
+        if (sleepRaw === "") throw new Error("Select sleep");
+        const readiness = Number(readinessRaw);
+        const soreness = Number(sorenessRaw);
+        const sleep = Number(sleepRaw);
         const readinessCalc = computeReadinessState({
           readiness,
           soreness,
@@ -272,6 +287,7 @@ async function main() {
           readiness_state: readinessCalc.readiness_state
         });
         $("checkinStatus").textContent = `Submitted (${readinessCalc.readiness_state})`;
+        $("checkinStatusInline").textContent = `Submitted (${readinessCalc.readiness_state})`;
         setStatus("Check-in saved");
       } catch (e) {
         setStatus(e?.message || String(e));
@@ -282,17 +298,30 @@ async function main() {
       try {
         const cmjValue = Number($("cmjInput").value);
         if (!cmjValue) throw new Error("Enter CMJ value.");
-        const row = await api.submitCmj({ playerId, dateISO: today, cmjValue });
-        $("cmjStatus").textContent = `Saved (${fmtDate(row.created_at)})`;
-        if (!cmjBestVal || cmjValue > cmjBestVal) $("cmjBest").textContent = cmjValue;
-        $("cmjRecent").textContent = cmjValue;
-        updateCmjPct(cmjValue);
+        await api.insertCmjAttempt
+          ? await api.insertCmjAttempt({ playerId, testDateISO: today, value: cmjValue })
+          : await api.submitCmj({ playerId, dateISO: today, cmjValue });
+        const session = api.rebuildCmjSessionForDate ? await api.rebuildCmjSessionForDate({ playerId, testDateISO: today }) : null;
+        $("cmjStatus").textContent = `Saved (${session ? fmtDate(session.created_at) : fmtDate(new Date().toISOString())})`;
+        const history = await api.getCmjSessionHistory(playerId, 50);
+        const best = history.length ? Math.max(...history.map(c => c.avg_value || 0)) : cmjValue;
+        const recent = history.length ? history[0].avg_value : cmjValue;
+        $("cmjBest").textContent = best ?? "—";
+        $("cmjRecent").textContent = recent ?? "—";
+        updateCmjPct(recent);
       } catch (e) {
         setStatus(e?.message || String(e));
       }
     };
 
     updateCmjPct(cmjRecentVal);
+
+    document.querySelectorAll('#sleepSeg button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.sleep;
+        syncSleepSeg(val);
+      });
+    });
 
     $("assignWorkoutBtn").onclick = async () => {
       try {

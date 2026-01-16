@@ -126,9 +126,11 @@ export const api = {
   async getAssignedWeekForPlayer(playerId) {
     const { data, error } = await supabase
       .from("player_weeks")
-      .select("week_id, is_active, week:weeks(id, title)")
+      .select("week_id, is_active, assigned_at, week:weeks(id, title)")
       .eq("player_id", playerId)
       .eq("is_active", true)
+      .order("assigned_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (error) throw error;
     return data;
@@ -208,6 +210,89 @@ export const api = {
       }])
       .select()
       .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async insertCmjAttempt({ playerId, testDateISO, value, protocol = "CMJ_no_arm_swing", metric = "jump_height_cm" }) {
+    const { data, error } = await supabase
+      .from("cmj_attempts")
+      .insert([{
+        player_id: playerId,
+        test_date: testDateISO,
+        value,
+        protocol,
+        metric
+      }])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async rebuildCmjSessionForDate({ playerId, testDateISO }) {
+    const { data: attempts, error: aErr } = await supabase
+      .from("cmj_attempts")
+      .select("value")
+      .eq("player_id", playerId)
+      .eq("test_date", testDateISO);
+    if (aErr) throw aErr;
+    if (!attempts || !attempts.length) throw new Error("No attempts for that date");
+    const values = attempts.map(a => Number(a.value) || 0).filter(v => v >= 0);
+    if (!values.length) throw new Error("No valid attempts");
+    const n_attempts = values.length;
+    const avg_value = values.reduce((a,b)=>a+b,0) / values.length;
+    const best_value = Math.max(...values);
+    const { data, error } = await supabase
+      .from("cmj_sessions")
+      .upsert([{
+        player_id: playerId,
+        test_date: testDateISO,
+        n_attempts,
+        avg_value,
+        best_value,
+        protocol: "CMJ_no_arm_swing",
+        metric: "jump_height_cm"
+      }], { onConflict: "player_id,test_date" })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getCmjSessionHistory(playerId, limit = 30) {
+    const { data, error } = await supabase
+      .from("cmj_sessions")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("test_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getCmjBestAllTime(playerId) {
+    const { data, error } = await supabase
+      .from("cmj_sessions")
+      .select("best_value")
+      .eq("player_id", playerId)
+      .order("best_value", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.best_value || null;
+  },
+
+  async getCmjMostRecent(playerId) {
+    const { data, error } = await supabase
+      .from("cmj_sessions")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("test_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     if (error) throw error;
     return data;
   },
@@ -411,15 +496,30 @@ export const api = {
   },
 
   async assignWeekToPlayers(weekId, playerIds) {
-    const rows = (playerIds || []).map(pid => ({
-      week_id: weekId,
+    if (!weekId || !(playerIds || []).length) throw new Error("weekId and playerIds required");
+    const ids = playerIds.filter(Boolean);
+    if (!ids.length) throw new Error("playerIds required");
+
+    // deactivate old assignments
+    const { error: updErr } = await supabase
+      .from("player_weeks")
+      .update({ is_active: false })
+      .in("player_id", ids)
+      .eq("is_active", true);
+    if (updErr) throw updErr;
+
+    const rows = ids.map(pid => ({
       player_id: pid,
-      status: 'assigned'
+      week_id: weekId,
+      is_active: true
     }));
-    return supabase
-      .from('week_assignments')
-      .upsert(rows, { onConflict: 'week_id,player_id' })
+
+    const { data, error } = await supabase
+      .from("player_weeks")
+      .insert(rows)
       .select();
+    if (error) throw error;
+    return { assignedCount: data?.length || 0, data };
   }
 };
 

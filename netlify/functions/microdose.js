@@ -3,6 +3,36 @@ function isPracticeType(type) {
   return t === 'practice' || t === 'basketball_practice';
 }
 
+const DAY_TYPE_PROFILES = {
+  "Restart": { category: "practice", defaultLoad: "Low", allowedLoads: ["Low", "Moderate"] },
+  "Mechanical": { category: "practice", defaultLoad: "Moderate", allowedLoads: ["Moderate", "High"] },
+  "Locomotive": { category: "practice", defaultLoad: "Moderate", allowedLoads: ["Moderate", "High"] },
+  "Top-Up": { category: "practice", defaultLoad: "Low", allowedLoads: ["Low", "Moderate"] },
+  "Game Preparation": { category: "practice", defaultLoad: "Low", allowedLoads: ["Low"], constraints: { disallowHeavy: true, disallowHighPlyo: true } },
+  "Recovery": { category: "recovery", defaultLoad: "Low", allowedLoads: ["Low"] },
+  "Game": { category: "game", defaultLoad: "High", allowedLoads: ["High"] },
+  "Day-Off": { category: "off", defaultLoad: "Low", allowedLoads: ["Low"] }
+};
+
+function normalizeDayType(value) {
+  const map = {
+    "Æfing": "Mechanical",
+    "Leikur": "Game",
+    "Frí": "Day-Off",
+    "Endurheimt": "Recovery",
+    "Ferð": "Day-Off"
+  };
+  if (!value) return "";
+  return map[value] || value;
+}
+
+function enforceLoad(dayType, load) {
+  const profile = DAY_TYPE_PROFILES[normalizeDayType(dayType)] || DAY_TYPE_PROFILES["Mechanical"];
+  const allowed = profile.allowedLoads || [];
+  const fixed = allowed.includes(load) ? load : profile.defaultLoad;
+  return { profile, load: fixed };
+}
+
 function mapLoadToReadiness(load) {
   const l = (load || '').toLowerCase();
   if (l.startsWith('h')) return 4;
@@ -26,8 +56,9 @@ function computeDayPlan(input) {
   const dagur = (input.dagur || 'Mán').trim();
   const readiness = Number(input.readiness || 7);
   const focus = (input.focus || 'Hraði + styrkur').trim();
-  const type = (input.type || '').toLowerCase();
-  const isPractice = isPracticeType(type);
+  const typeRaw = normalizeDayType(input.type || input.dagskra || 'Mechanical');
+  const { profile, load } = enforceLoad(typeRaw, input.alag || input.load || 'Low');
+  const isPractice = profile.category === 'practice';
   const traffic = baseTraffic(readiness);
   const stefna = baseStefnaFromTraffic(traffic);
 
@@ -57,7 +88,7 @@ function computeDayPlan(input) {
     'Kjarni: anti-extension, anti-rotation, lateral (3 æfingar x 2 sett)'
   ];
 
-  return { status: 'ok', dagur, readiness, focus, traffic, stefna, lota, volume, sett, stod, type: isPractice ? 'practice' : type };
+  return { status: 'ok', dagur, readiness, focus, traffic, stefna, lota, volume, sett, stod, type: isPractice ? 'practice' : profile.category, load: load, dayType: typeRaw };
 }
 
 function isStrengthExposure(stefna) {
@@ -75,7 +106,7 @@ function applyWeeklyRules(weekSchedule, context) {
   const residualLog = [];
   let anchorCount = 0;
   let hasGreen = false;
-  const gamesThisWeek = weekSchedule.filter(d => (d.dagskra || '').trim() === 'Leikur').length;
+  const gamesThisWeek = weekSchedule.filter(d => normalizeDayType(d.dagskra || d.type || '') === 'Game').length;
   const maintenanceBaseCap = gamesThisWeek === 0 ? 3 : gamesThisWeek === 1 ? 2 : 1;
   rulesLog.push(`Viku-cap: max ${maintenanceBaseCap} Maintenance`); 
   rulesLog.push('Auto-rest days virkjaðir');
@@ -99,7 +130,7 @@ function applyWeeklyRules(weekSchedule, context) {
     let stefna = dayPlan.stefna;
     let note = null;
 
-    const allowedForAnchor = (sched === 'Æfing' || sched === 'Tækni') && traffic === 'grænt';
+    const allowedForAnchor = (normalizeDayType(sched) === 'Mechanical') && traffic === 'grænt';
     const needStrengthMaint = lastStrength !== null && lastStrength >= 7;
     const needStrengthAnchor = lastStrength !== null && lastStrength >= 10;
     const needPowerTouch = lastPower !== null && lastPower >= 5;
@@ -110,11 +141,14 @@ function applyWeeklyRules(weekSchedule, context) {
     if (gamesThisWeek >= 2 && weeklyMaintenanceCap > 2) weeklyMaintenanceCap = 2;
 
     // Hard constraints
+    const schedNorm = normalizeDayType(sched);
     if (traffic === 'rautt') {
       stefna = 'Primer';
-      if (sched === 'Leikur' || sched === 'Frí') stefna = '—';
-    } else if (sched === 'Leikur' || sched === 'Frí') {
-      stefna = sched === 'Frí' ? '—' : 'Primer';
+      if (schedNorm === 'Game' || schedNorm === 'Day-Off') stefna = '—';
+    } else if (schedNorm === 'Game' || schedNorm === 'Day-Off') {
+      stefna = schedNorm === 'Day-Off' ? '—' : 'Primer';
+    } else if (schedNorm === 'Game Preparation') {
+      stefna = 'Primer';
     } else if (traffic === 'gult') {
       stefna = 'Maintenance';
     } else if (traffic === 'grænt') {
