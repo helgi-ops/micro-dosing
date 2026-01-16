@@ -1,5 +1,5 @@
 // assets/app-auth.js
-import { api, supabase } from "./dataClient.js";
+import { api, supabase, waitForAuthReady, getCachedSession } from "./dataClient.js";
 
 function el(id) { return document.getElementById(id); }
 
@@ -116,7 +116,8 @@ if (old) old.remove();
 async function settleAuthFromUrl() {
   if (location.hash && location.hash.includes("access_token=")) {
     await new Promise(r => setTimeout(r, 80));
-    try { await supabase.auth.getSession(); } catch (_) {}
+    // Supabase v2-safe: do not call getSession here (can abort)
+    await waitForAuthReady();
     history.replaceState({}, document.title, location.pathname + location.search);
   }
 }

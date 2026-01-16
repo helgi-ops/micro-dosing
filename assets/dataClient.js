@@ -18,8 +18,9 @@ window.supabase = supabase;
 if (location.hash && location.hash.includes("access_token=")) {
   (async () => {
     try {
-      await supabase.auth.getSession();
-    } catch (_) {}
+      // Let Supabase SDK process the hash; avoid getSession to prevent AbortError
+      await new Promise(r => setTimeout(r, 50));
+    } catch (_) {} // swallow
     try {
       history.replaceState({}, document.title, location.pathname + location.search);
     } catch (_) {}

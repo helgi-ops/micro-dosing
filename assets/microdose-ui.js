@@ -12,6 +12,21 @@ import {
 } from "./dataClient.js";
 
 (() => {
+  // --- SAFETY NET: Firefox/Safari can Abort getSession/session-restore promises.
+  // Prevent a single aborted promise from killing the whole UI.
+  window.addEventListener("unhandledrejection", (event) => {
+    const r = event.reason;
+    const msg = String(r?.message || r || "");
+    const name = String(r?.name || "");
+    if (
+      msg.includes("The operation was aborted") ||
+      msg.includes("AbortError") ||
+      name === "AbortError"
+    ) {
+      event.preventDefault(); // swallow
+    }
+  });
+
   // ---------- Supabase bridge & helpers ----------
   // Always use the module client (do NOT rely on window.*)
   const supabaseClient = supabase;
