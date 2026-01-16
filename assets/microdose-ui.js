@@ -5,14 +5,16 @@ import {
   listMyAssignedWeeks,
   getWeekDays,
   listMyDayCompletionsForWeek,
-  markDayDone
+  markDayDone,
+  supabase,
+  waitForAuthReady,
+  getCachedSession
 } from "./dataClient.js";
 
 (() => {
   // ---------- Supabase bridge & helpers ----------
-  const supabaseClient =
-    (typeof window !== "undefined" && (window.supabase || window.__supabase || window.sb || window.supabaseClient)) || null;
-  if (!supabaseClient) console.warn("[auth] window.supabase missing — check script order and type=module");
+  // Always use the module client (do NOT rely on window.*)
+  const supabaseClient = supabase;
   const el = (id) => document.getElementById(id);
   const DAYS = ['Mán','Þri','Mið','Fim','Fös','Lau','Sun'];
   let weekState = {};
@@ -93,10 +95,9 @@ import {
 
     try {
       line.textContent = "Athuga innskráningu…";
-      const { data, error } = await supabaseClient.auth.getSession();
-      if (error) throw error;
 
-      const session = data?.session;
+      await waitForAuthReady();
+      const session = getCachedSession();
       const user = session?.user;
       if (!session || !user) {
         line.textContent = "Ekki innskráð(ur). Sendu innskráningartengil.";
@@ -136,12 +137,12 @@ import {
         });
       }
     } catch (err) {
-      console.error("supabase.auth.getSession failed:", err);
+      console.error("[auth] failed to resolve session:", err);
       const msg =
         err?.message ||
         err?.error_description ||
         (typeof err === "string" ? err : JSON.stringify(err));
-      line.textContent = `Innskráningarvilla: ${msg}`;
+      line.textContent = `Innskráning tókst ekki (reyndu aftur): ${msg}`;
       if (teamLine) teamLine.textContent = "Lið: —";
       if (signOutBtn) signOutBtn.style.display = "none";
       return;
@@ -150,20 +151,25 @@ import {
 
   async function handleMagicLinkLanding() {
     if (!supabaseClient) return;
-    if (location.hash && location.hash.includes("access_token=")) {
-      await new Promise(r => setTimeout(r, 50));
-      try { await supabaseClient.auth.getSession(); } catch (_) {}
-      history.replaceState({}, document.title, location.pathname + location.search);
-    }
+
+    // Supabase v2: never call getSession here (can AbortError in Firefox)
+    const hasToken = location.hash && location.hash.includes("access_token=");
+    if (!hasToken) return;
+
+    // Give the SDK a tick to process the hash internally
+    await new Promise(r => setTimeout(r, 50));
+
+    // Clean URL hash to avoid re-processing on refresh
+    history.replaceState({}, document.title, location.pathname + location.search);
+
+    // Wait until auth is ready, then re-render auth status
+    await waitForAuthReady();
+    await loadSessionAndRenderAuthStatus();
   }
 
   async function settleAuthFromUrl() {
-    if (!supabaseClient) return;
-    if (location.hash && location.hash.includes("access_token=")) {
-      await new Promise(r => setTimeout(r, 80));
-      try { await supabaseClient.auth.getSession(); } catch (_) {}
-      history.replaceState({}, document.title, location.pathname + location.search);
-    }
+    // Keep for backwards compatibility — just delegate
+    return handleMagicLinkLanding();
   }
 
   // ===============================

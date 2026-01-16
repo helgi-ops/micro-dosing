@@ -28,9 +28,8 @@ if (location.hash && location.hash.includes("access_token=")) {
 
 export const api = {
   async getSession() {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    return data.session;
+    await waitForAuthReady();
+    return getCachedSession();
   },
 
   async signInWithEmail(email) {
@@ -390,8 +389,8 @@ export async function markDayDone(weekDayId, payload = {}) {
 }
 
 export async function invitePlayer(playerId, inviteEmail) {
-  const { data: s } = await supabase.auth.getSession();
-  const token = s?.session?.access_token;
+  const session = isAuthReady() ? getCachedSession() : await waitForAuthReady();
+  const token = session?.access_token;
   if (!token) throw new Error('Not signed in');
 
   const redirectTo = new URL('./', window.location.href).toString();
@@ -421,48 +420,56 @@ api.invitePlayer = invitePlayer;
 window.__api = api;
 window.__supabase = supabase;
 
-let _session = null;
-
 export function getAuthSession() {
-  return _session;
+  return getCachedSession();
 }
 
 export async function initAuth() {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) console.warn('[auth] getSession error:', error);
-  _session = data?.session ?? null;
-
-  window.dispatchEvent(new CustomEvent('auth:changed', { detail: { session: _session } }));
-
-  supabase.auth.onAuthStateChange((_event, session) => {
-    _session = session ?? null;
-    window.dispatchEvent(new CustomEvent('auth:changed', { detail: { session: _session, event: _event } }));
-  });
-
-  return _session;
+  const session = await waitForAuthReady();
+  window.dispatchEvent(new CustomEvent('auth:changed', { detail: { session, event: 'INITIAL' } }));
+  return session;
 }
 
-// Auth state cache (Supabase v2 safe)
+// --- Auth ready + session cache (Supabase v2 safe) ---
 let __authReady = false;
-let __authSession = null;
+let __cachedSession = null;
+
+// Promise sem leysist þegar INITIAL_SESSION kemur
+let __resolveAuthReady;
+const __authReadyPromise = new Promise((resolve) => { __resolveAuthReady = resolve; });
 
 supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+  if (event === "INITIAL_SESSION") {
     __authReady = true;
-    __authSession = session;
-    window.dispatchEvent(new CustomEvent('auth:ready', { detail: { session } }));
+    __cachedSession = session || null;
+    __resolveAuthReady?.(session || null);
+    window.dispatchEvent(new CustomEvent("auth:ready", { detail: { session: __cachedSession } }));
+    return;
   }
-  if (event === 'SIGNED_OUT') {
-    __authReady = true;
-    __authSession = null;
-    window.dispatchEvent(new CustomEvent('auth:ready', { detail: { session: null } }));
+
+  if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+    __cachedSession = session || null;
+    window.dispatchEvent(new CustomEvent("auth:changed", { detail: { session: __cachedSession } }));
+    return;
+  }
+
+  if (event === "SIGNED_OUT") {
+    __cachedSession = null;
+    window.dispatchEvent(new CustomEvent("auth:changed", { detail: { session: null } }));
   }
 });
 
-export function getCachedSession() {
-  return __authSession;
-}
-
 export function isAuthReady() {
   return __authReady;
+}
+
+export function getCachedSession() {
+  return __cachedSession;
+}
+
+export async function waitForAuthReady() {
+  // ef ready nú þegar
+  if (__authReady) return __cachedSession;
+  // annars bíð eftir INITIAL_SESSION
+  return __authReadyPromise;
 }
