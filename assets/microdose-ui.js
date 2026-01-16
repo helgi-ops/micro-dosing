@@ -261,7 +261,8 @@ if (!window.__abortRejectionGuardInstalled) {
         console.warn("[nav] Panel not found:", panelId);
         return;
       }
-      panels.forEach(p => p.hidden = true);
+      // Show all panels on the main page (no hiding)
+      panels.forEach(p => p.hidden = false);
       target.hidden = false;
 
       const items = nav.querySelectorAll(".nav-item, [data-panel], a[href^='#']");
