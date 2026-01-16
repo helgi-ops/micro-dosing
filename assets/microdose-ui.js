@@ -109,7 +109,11 @@ if (!window.__abortRejectionGuardInstalled) {
     try {
       line.textContent = "Athuga innskráningu…";
 
-      await waitForAuthReady();
+      await Promise.race([
+        waitForAuthReady(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("auth timeout")), 2000))
+      ]).catch(() => null);
+
       const session = getCachedSession();
       const user = session?.user;
       if (!session || !user) {
@@ -253,6 +257,18 @@ if (!window.__abortRejectionGuardInstalled) {
     const saved = (() => { try { return localStorage.getItem("active_panel_id"); } catch { return null; } })();
     const defaultPanel = saved || "panel-roster";
     showPanel(defaultPanel);
+  }
+
+  if (!window.__authStatusBound) {
+    window.__authStatusBound = true;
+
+    window.addEventListener("auth:ready", () => {
+      loadSessionAndRenderAuthStatus();
+    });
+
+    window.addEventListener("auth:changed", () => {
+      loadSessionAndRenderAuthStatus();
+    });
   }
 
   // -----------------------------
