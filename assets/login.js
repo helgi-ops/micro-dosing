@@ -13,8 +13,10 @@ function setMsg(t, cls) {
 }
 
 function showResetMode(on) {
-  $("resetArea").style.display = on ? "block" : "none";
-  $("backToLoginLink").style.display = on ? "inline" : "none";
+  const resetArea = $("resetArea");
+  if (resetArea) resetArea.style.display = on ? "block" : "none";
+  const backToLogin = $("backToLoginLink") || $("backToLogin");
+  if (backToLogin) backToLogin.style.display = on ? "inline" : "none";
   const pwArea = $("pwArea");
   if (pwArea && pwArea.style.display === "none") pwArea.style.display = "block";
   const signInBtn = $("signInBtn");
@@ -122,19 +124,25 @@ async function init() {
     }
   };
 
-  $("forgotPwLink").onclick = (e) => {
-    e.preventDefault();
-    setMsg("");
-    showResetMode(true);
-    setStatus("Reset password");
-  };
+  const forgotLink = $("forgotPwLink") || $("forgotLink");
+  if (forgotLink) {
+    forgotLink.onclick = (e) => {
+      e.preventDefault();
+      setMsg("");
+      showResetMode(true);
+      setStatus("Reset password");
+    };
+  }
 
-  $("backToLoginLink").onclick = (e) => {
-    e.preventDefault();
-    setMsg("");
-    showResetMode(false);
-    setStatus("Not signed in");
-  };
+  const backToLogin = $("backToLoginLink") || $("backToLogin");
+  if (backToLogin) {
+    backToLogin.onclick = (e) => {
+      e.preventDefault();
+      setMsg("");
+      showResetMode(false);
+      setStatus("Not signed in");
+    };
+  }
 
   $("sendResetBtn").onclick = async () => {
     try {
