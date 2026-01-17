@@ -18,7 +18,7 @@ function showResetMode(on) {
   const backToLogin = $("backToLoginLink") || $("backToLogin");
   if (backToLogin) backToLogin.style.display = on ? "inline" : "none";
   const pwArea = $("pwArea");
-  if (pwArea && pwArea.style.display === "none") pwArea.style.display = "block";
+  if (pwArea) pwArea.style.display = on ? "none" : "block";
   const signInBtn = $("signInBtn");
   if (signInBtn) signInBtn.disabled = on;
   const signUpBtn = $("signUpBtn");
