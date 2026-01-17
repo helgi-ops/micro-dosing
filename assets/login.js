@@ -78,30 +78,8 @@ async function routeUser(session) {
 async function init() {
   setStatus("Checking session…");
   showResetMode(false);
-  const session = await getSessionCached();
 
-  if (session) {
-    $("signOutBtn").style.display = "inline-block";
-    setStatus("Signed in");
-    await goNextOrRole();
-    await routeUser(session);
-  } else {
-    setStatus("Not signed in");
-  }
-
-  supabase.auth.onAuthStateChange(async (_event, s) => {
-    const sess = s || await getSessionCached();
-    if (sess) {
-      $("signOutBtn").style.display = "inline-block";
-      setStatus("Signed in");
-      await goNextOrRole();
-      await routeUser(sess);
-    } else {
-      $("signOutBtn").style.display = "none";
-      setStatus("Not signed in");
-    }
-  });
-
+  // --- UI bindings first so they work even if session fetch errors ---
   $("signInBtn").onclick = async () => {
     try {
       setMsg("");
@@ -168,6 +146,37 @@ async function init() {
     $("signOutBtn").style.display = "none";
     window.location.href = LOGIN_URL;
   };
+
+  // --- Session handling after UI is wired ---
+  let session = null;
+  try {
+    session = await getSessionCached();
+  } catch (e) {
+    setStatus("Error");
+    setMsg(e?.message || String(e), "err");
+  }
+
+  if (session) {
+    $("signOutBtn").style.display = "inline-block";
+    setStatus("Signed in");
+    await goNextOrRole();
+    await routeUser(session);
+  } else if ($("status").textContent === "Checking session…") {
+    setStatus("Not signed in");
+  }
+
+  supabase.auth.onAuthStateChange(async (_event, s) => {
+    const sess = s || await getSessionCached().catch(() => null);
+    if (sess) {
+      $("signOutBtn").style.display = "inline-block";
+      setStatus("Signed in");
+      await goNextOrRole();
+      await routeUser(sess);
+    } else {
+      $("signOutBtn").style.display = "none";
+      setStatus("Not signed in");
+    }
+  });
 }
 
 init();
