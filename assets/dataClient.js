@@ -3,6 +3,8 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const SUPABASE_URL = window.__SUPABASE_URL__;
 const SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY__;
+const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
+const LOGIN_URL = baseUrl + "index.html";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -34,11 +36,10 @@ export const api = {
   },
 
   async signInWithEmail(email) {
-    const redirectTo = window.location.href.split('#')[0];
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: redirectTo
+        emailRedirectTo: LOGIN_URL
       }
     });
     if (error) {
@@ -49,10 +50,9 @@ export const api = {
   },
 
   async sendMagicLink(email) {
-    const redirectTo = window.location.href.split('#')[0];
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirectTo }
+      options: { emailRedirectTo: LOGIN_URL }
     });
     if (error) {
       console.error("Supabase signInWithOtp error:", error);

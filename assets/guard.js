@@ -1,14 +1,19 @@
 import { supabase } from "./supabaseClient.js";
 
+const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
+export const ROUTES = {
+  login: baseUrl + "index.html",
+};
+
 export async function requireAuth(requiredRole) {
   const { data, error } = await supabase.auth.getSession();
   if (error) {
-    window.location.href = "/index.html";
+    window.location.href = ROUTES.login;
     return null;
   }
   const session = data?.session;
   if (!session?.user?.id) {
-    window.location.href = "/index.html";
+    window.location.href = ROUTES.login;
     return null;
   }
 
@@ -21,7 +26,7 @@ export async function requireAuth(requiredRole) {
       .eq("user_id", userId)
       .maybeSingle();
     if (tmErr || !tm) {
-      window.location.href = "/index.html";
+      window.location.href = ROUTES.login;
       return null;
     }
   }
@@ -33,7 +38,7 @@ export async function requireAuth(requiredRole) {
       .eq("user_id", userId)
       .maybeSingle();
     if (plErr || !pl) {
-      window.location.href = "/index.html";
+      window.location.href = ROUTES.login;
       return null;
     }
   }
@@ -46,7 +51,7 @@ export async function requireRole(roles = []) {
   const { data } = await supabase.auth.getSession();
   const session = data?.session;
   if (!session?.user?.id) {
-    window.location.href = "/index.html";
+    window.location.href = ROUTES.login;
     return { ok: false };
   }
   const userId = session.user.id;
@@ -72,6 +77,6 @@ export async function requireRole(roles = []) {
     if (pl) return { ok: true, role: "player", session };
   }
 
-  window.location.href = "/index.html";
+  window.location.href = ROUTES.login;
   return { ok: false };
 }

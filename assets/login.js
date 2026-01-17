@@ -1,13 +1,26 @@
 import { supabase, waitForAuthReady, getCachedSession } from "./dataClient.js";
-import { ROUTES } from "./guard.js";
 
 const $ = (id) => document.getElementById(id);
+const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
+const LOGIN_URL = baseUrl + "index.html";
+const RESET_URL = baseUrl + "reset-password.html";
 
 function setStatus(t) { $("status").textContent = t || ""; }
 function setMsg(t, cls) {
   const el = $("msg");
   el.className = cls ? cls : "muted";
   el.textContent = t || "";
+}
+
+function showResetMode(on) {
+  $("resetArea").style.display = on ? "block" : "none";
+  $("backToLoginLink").style.display = on ? "inline" : "none";
+  const pwArea = $("pwArea");
+  if (pwArea && pwArea.style.display === "none") pwArea.style.display = "block";
+  const signInBtn = $("signInBtn");
+  if (signInBtn) signInBtn.disabled = on;
+  const signUpBtn = $("signUpBtn");
+  if (signUpBtn) signUpBtn.disabled = on;
 }
 
 function getNext() {
@@ -62,6 +75,7 @@ async function routeUser(session) {
 
 async function init() {
   setStatus("Checking session…");
+  showResetMode(false);
   const session = await getSessionCached();
 
   if (session) {
@@ -108,17 +122,18 @@ async function init() {
     }
   };
 
-  $("forgotLink").onclick = (e) => {
+  $("forgotPwLink").onclick = (e) => {
     e.preventDefault();
-    document.getElementById("pwArea").style.display = "none";
-    document.getElementById("resetArea").style.display = "block";
+    setMsg("");
+    showResetMode(true);
+    setStatus("Reset password");
   };
 
-  $("backToLogin").onclick = (e) => {
+  $("backToLoginLink").onclick = (e) => {
     e.preventDefault();
-    document.getElementById("resetArea").style.display = "none";
-    document.getElementById("pwArea").style.display = "block";
     setMsg("");
+    showResetMode(false);
+    setStatus("Not signed in");
   };
 
   $("sendResetBtn").onclick = async () => {
@@ -128,7 +143,7 @@ async function init() {
       if (!email) throw new Error("Enter your email.");
       setStatus("Sending reset link…");
       await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/") + "reset-password.html"
+        redirectTo: RESET_URL
       });
       setStatus("If an account exists, reset link sent");
       setMsg("If an account exists for this email, a password reset link has been sent.", "ok");
@@ -143,7 +158,7 @@ async function init() {
     setMsg("Signed out.", "muted");
     setStatus("Not signed in");
     $("signOutBtn").style.display = "none";
-    window.location.href = ROUTES.login;
+    window.location.href = LOGIN_URL;
   };
 }
 
