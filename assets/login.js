@@ -1,5 +1,5 @@
 import { supabase, waitForAuthReady, getCachedSession } from "./dataClient.js";
-import { routeAfterLogin, ROUTES } from "./guard.js";
+import { ROUTES } from "./guard.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -29,12 +29,35 @@ async function goNextOrRole() {
     window.location.href = next;
     return;
   }
-  const r = await routeAfterLogin();
-  if (r?.role === "no_access") {
-    setStatus("Signed in");
-    setMsg("Signed in, but you don’t have access yet (no team member / player link found).", "err");
-    $("signOutBtn").style.display = "inline-block";
+}
+
+async function routeUser(session) {
+  const userId = session?.user?.id;
+  if (!userId) return;
+
+  // coach?
+  const { data: tm } = await supabase
+    .from("team_members")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (tm) {
+    window.location.href = "/coach.html";
+    return;
   }
+
+  const { data: pl } = await supabase
+    .from("players")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (pl) {
+    window.location.href = "/player.html";
+    return;
+  }
+
+  setMsg("No role assigned. Contact your coach.", "err");
+  $("signOutBtn").style.display = "inline-block";
 }
 
 async function init() {
@@ -45,16 +68,18 @@ async function init() {
     $("signOutBtn").style.display = "inline-block";
     setStatus("Signed in");
     await goNextOrRole();
+    await routeUser(session);
   } else {
     setStatus("Not signed in");
   }
 
-  supabase.auth.onAuthStateChange(async () => {
-    const s = await getSessionCached();
-    if (s) {
+  supabase.auth.onAuthStateChange(async (_event, s) => {
+    const sess = s || await getSessionCached();
+    if (sess) {
       $("signOutBtn").style.display = "inline-block";
       setStatus("Signed in");
       await goNextOrRole();
+      await routeUser(sess);
     } else {
       $("signOutBtn").style.display = "none";
       setStatus("Not signed in");
@@ -74,26 +99,39 @@ async function init() {
 
       setStatus("Signed in");
       setMsg("Success. Routing…", "ok");
+      const sess = await getSessionCached();
       await goNextOrRole();
+      if (sess) await routeUser(sess);
     } catch (e) {
       setStatus("Error");
       setMsg(e?.message || String(e), "err");
     }
   };
 
-  $("signUpBtn").onclick = async () => {
+  $("forgotLink").onclick = (e) => {
+    e.preventDefault();
+    document.getElementById("pwArea").style.display = "none";
+    document.getElementById("resetArea").style.display = "block";
+  };
+
+  $("backToLogin").onclick = (e) => {
+    e.preventDefault();
+    document.getElementById("resetArea").style.display = "none";
+    document.getElementById("pwArea").style.display = "block";
+    setMsg("");
+  };
+
+  $("sendResetBtn").onclick = async () => {
     try {
       setMsg("");
       const email = $("email").value.trim();
-      const password = $("password").value;
-      if (!email || !password) throw new Error("Enter email + password.");
-
-      setStatus("Creating account…");
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-
-      setStatus("Account created");
-      setMsg("Account created. If email confirmation is enabled, confirm your email then sign in.", "ok");
+      if (!email) throw new Error("Enter your email.");
+      setStatus("Sending reset link…");
+      await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/") + "reset-password.html"
+      });
+      setStatus("If an account exists, reset link sent");
+      setMsg("If an account exists for this email, a password reset link has been sent.", "ok");
     } catch (e) {
       setStatus("Error");
       setMsg(e?.message || String(e), "err");

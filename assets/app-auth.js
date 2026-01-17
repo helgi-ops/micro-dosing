@@ -33,7 +33,7 @@ async function ensureSessionOrRedirect() {
   await waitForAuthReady?.();
   const session = getCachedSession?.() || (await supabase.auth.getSession()).data?.session;
   if (!session) {
-    window.location.href = "./login.html";
+    window.location.href = "./index.html";
     return null;
   }
   return session;
@@ -88,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 supabase.auth.onAuthStateChange(async (_event, session) => {
   if (!session) {
-    window.location.href = "./login.html";
+    window.location.href = "./index.html";
     return;
   }
   await loadTeams();

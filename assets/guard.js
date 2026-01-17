@@ -1,81 +1,77 @@
-import { supabase, waitForAuthReady, getCachedSession } from "./dataClient.js";
+import { supabase } from "./supabaseClient.js";
 
-export const ROUTES = {
-  coach: "./index.html",
-  player: "./player.html",
-  login: "./login.html"
-};
-
-const PLAYER_USER_COL = "user_id"; // change to "auth_user_id" if your schema uses that
-
-export async function getSessionSafe() {
-  try { await waitForAuthReady?.(); } catch {}
-  const cached = getCachedSession?.();
-  if (cached) return cached;
-  const { data } = await supabase.auth.getSession();
-  return data?.session || null;
-}
-
-export async function resolveMyRole() {
-  const session = await getSessionSafe();
-  if (!session?.user?.id) return { role: "anon", session: null };
+export async function requireAuth(requiredRole) {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    window.location.href = "/index.html";
+    return null;
+  }
+  const session = data?.session;
+  if (!session?.user?.id) {
+    window.location.href = "/index.html";
+    return null;
+  }
 
   const userId = session.user.id;
 
-  {
-    const { data, error } = await supabase
+  if (requiredRole === "coach") {
+    const { data: tm, error: tmErr } = await supabase
       .from("team_members")
-      .select("role, team_id")
+      .select("id")
       .eq("user_id", userId)
-      .limit(1);
-
-    if (!error && data?.length) {
-      const r = data[0].role || "coach";
-      const role = (r === "admin" || r === "coach") ? r : "coach";
-      return { role, session, team_id: data[0].team_id };
+      .maybeSingle();
+    if (tmErr || !tm) {
+      window.location.href = "/index.html";
+      return null;
     }
   }
 
-  {
-    const { data, error } = await supabase
+  if (requiredRole === "player") {
+    const { data: pl, error: plErr } = await supabase
       .from("players")
-      .select("id, status, team_id")
-      .eq(PLAYER_USER_COL, userId)
-      .limit(1);
-
-    if (!error && data?.length) {
-      return { role: "player", session, player_id: data[0].id, team_id: data[0].team_id };
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (plErr || !pl) {
+      window.location.href = "/index.html";
+      return null;
     }
   }
 
-  return { role: "no_access", session };
+  return session;
 }
 
-export async function routeAfterLogin() {
-  const r = await resolveMyRole();
-  if (r.role === "admin" || r.role === "coach") {
-    window.location.href = ROUTES.coach;
-    return;
+// Convenience to support existing code expecting multi-role array
+export async function requireRole(roles = []) {
+  const { data } = await supabase.auth.getSession();
+  const session = data?.session;
+  if (!session?.user?.id) {
+    window.location.href = "/index.html";
+    return { ok: false };
   }
-  if (r.role === "player") {
-    window.location.href = ROUTES.player;
-    return;
-  }
-  return r;
-}
+  const userId = session.user.id;
 
-export async function requireRole(allowedRoles = []) {
-  const r = await resolveMyRole();
+  const wantsCoach = roles.includes("coach") || roles.includes("admin");
+  const wantsPlayer = roles.includes("player");
 
-  if (r.role === "anon") {
-    const next = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `${ROUTES.login}?next=${next}`;
-    return { ok: false, reason: "anon" };
-  }
-
-  if (!allowedRoles.includes(r.role)) {
-    return { ok: false, reason: "forbidden", role: r.role, session: r.session };
+  if (wantsCoach) {
+    const { data: tm } = await supabase
+      .from("team_members")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (tm) return { ok: true, role: "coach", session };
   }
 
-  return { ok: true, ...r };
+  if (wantsPlayer) {
+    const { data: pl } = await supabase
+      .from("players")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (pl) return { ok: true, role: "player", session };
+  }
+
+  window.location.href = "/index.html";
+  return { ok: false };
 }

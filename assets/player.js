@@ -1,12 +1,8 @@
 import { api, supabase, waitForAuthReady } from "./dataClient.js";
-import { requireRole } from "./guard.js";
+import { requireAuth } from "./guard.js";
 
-const gate = await requireRole(["player", "coach", "admin"]);
-if (!gate.ok) {
-  document.body.innerHTML = `<div style="padding:20px">Not authorized for player view.</div>`;
-  throw new Error("Forbidden");
-}
-const IS_COACH = gate.role === "coach" || gate.role === "admin";
+const session = await requireAuth("player");
+const IS_COACH = false;
 
 const $ = (id) => document.getElementById(id);
 

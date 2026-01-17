@@ -24,7 +24,7 @@
     <div class="wrap">
       <div class="row" style="justify-content:space-between;">
         <div class="row">
-          <a href="./index.html" class="muted">← Back</a>
+          <a href="./coach.html" class="muted">← Back</a>
           <span class="muted">/</span>
           <strong id="crumbName">Player</strong>
         </div>
@@ -144,5 +144,9 @@
     </div>
 
     <script type="module" src="./assets/player.js"></script>
+    <script type="module">
+      import { requireAuth } from "./assets/guard.js";
+      await requireAuth("player");
+    </script>
   </body>
 </html>
