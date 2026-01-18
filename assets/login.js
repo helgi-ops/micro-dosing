@@ -57,7 +57,7 @@ async function routeUser(session) {
     .eq("user_id", userId)
     .maybeSingle();
   if (tm) {
-    window.location.href = "/coach.html";
+    window.location.href = baseUrl + "coach.html";
     return;
   }
 
@@ -67,7 +67,7 @@ async function routeUser(session) {
     .eq("user_id", userId)
     .maybeSingle();
   if (pl) {
-    window.location.href = "/player.html";
+    window.location.href = baseUrl + "player.html";
     return;
   }
 
@@ -78,6 +78,29 @@ async function routeUser(session) {
 async function init() {
   setStatus("Checking session…");
   showResetMode(false);
+
+  // --- Handle Supabase email links (confirm/invite/recovery) ---
+  try {
+    const url = new URL(window.location.href);
+    const hasCode = url.searchParams.get("code");
+    const hasError = url.searchParams.get("error") || url.searchParams.get("error_description");
+
+    if (hasError) {
+      const msg = url.searchParams.get("error_description") || url.searchParams.get("error");
+      setStatus("Error");
+      setMsg(decodeURIComponent(msg || "Auth error"), "err");
+    } else if (hasCode) {
+      setStatus("Finalizing sign-in…");
+      const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+      if (error) throw error;
+      try { window.history.replaceState({}, document.title, LOGIN_URL); } catch (_) {}
+      setStatus("Signed in");
+      setMsg("Success. Routing…", "ok");
+    }
+  } catch (e) {
+    setStatus("Error");
+    setMsg(e?.message || String(e), "err");
+  }
 
   // --- UI bindings first so they work even if session fetch errors ---
   $("signInBtn").onclick = async () => {
