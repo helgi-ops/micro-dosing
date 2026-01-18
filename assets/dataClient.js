@@ -622,7 +622,47 @@ export async function markDayDone(weekDayId, payload = {}) {
     .single();
 }
 
+// --- INVITE PLAYER (Netlify Function) ---
+async function invitePlayerByEmailViaNetlify({ teamId, email }) {
+  const url = "/.netlify/functions/invite-player";
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ team_id: teamId, email })
+    });
+  } catch (e) {
+    alert(
+      "Invite failed (network).\n\n" +
+      "Most likely wrong endpoint URL or blocked request.\n" +
+      "Tried: " + url + "\n\n" +
+      "Open DevTools → Network and check the failing request.\n\n" +
+      "Details: " + (e?.message || e)
+    );
+    throw e;
+  }
+
+  let payloadText = "";
+  try { payloadText = await res.text(); } catch (_) {}
+
+  if (!res.ok) {
+    alert(
+      "Invite failed (HTTP " + res.status + ").\n\n" +
+      "Endpoint: " + url + "\n\n" +
+      "Response:\n" + (payloadText || "(empty)")
+    );
+    throw new Error("Invite failed: HTTP " + res.status);
+  }
+
+  let data = null;
+  try { data = payloadText ? JSON.parse(payloadText) : null; } catch (_) {}
+  return data;
+}
+
 export async function invitePlayer(playerId, inviteEmail) {
+  // Fallback legacy call (kept for compatibility) — if you still want Supabase function
+  // invocation with auth token, keep the code below; otherwise you can remove it.
   const session = isAuthReady() ? getCachedSession() : await waitForAuthReady();
   const token = session?.access_token;
   if (!token) throw new Error('Not signed in');
@@ -646,6 +686,9 @@ export async function invitePlayer(playerId, inviteEmail) {
   if (!res.ok) throw new Error(json.error || 'Invite failed');
   return json;
 }
+
+// Expose Netlify invite helper for coach UI
+api.invitePlayerByEmailViaNetlify = invitePlayerByEmailViaNetlify;
 
 // expose on api for convenience
 api.invitePlayer = invitePlayer;

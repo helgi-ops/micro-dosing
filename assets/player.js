@@ -376,7 +376,7 @@ let cmjRecentVal = null;
             .insert([{ player_id: playerId, status: "invited" }]);
           if (error) throw error;
         }
-        setActionMsg("Invite sent.");
+        setActionMsg("Invite sent. Note: invites are only sent via coach flow; players cannot self-invite.");
         setPill("inviteState", "Invite: invited");
       } catch (e) {
         setActionMsg(e?.message || String(e), true);
