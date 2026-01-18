@@ -235,19 +235,25 @@ async function init() {
   if (session) {
     $("signOutBtn").style.display = "inline-block";
     setStatus("Signed in");
-    await goNextOrRole();
-    await routeUser(session);
+    // Only auto-route if explicit ?next= is present
+    if (getNext()) {
+      await goNextOrRole();
+      await routeUser(session);
+    }
   } else if ($("status").textContent === "Checking session…") {
     setStatus("Not signed in");
   }
 
-  supabase.auth.onAuthStateChange(async (_event, s) => {
+  supabase.auth.onAuthStateChange(async (event, s) => {
     const sess = s || await getSessionCached().catch(() => null);
     if (sess) {
       $("signOutBtn").style.display = "inline-block";
       setStatus("Signed in");
-      await goNextOrRole();
-      await routeUser(sess);
+      // Only route on fresh SIGNED_IN events (skip INITIAL_SESSION/TOKEN_REFRESHED to avoid surprise redirects)
+      if (event === "SIGNED_IN") {
+        await goNextOrRole();
+        await routeUser(sess);
+      }
     } else {
       $("signOutBtn").style.display = "none";
       setStatus("Not signed in");
