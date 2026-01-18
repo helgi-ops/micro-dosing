@@ -111,7 +111,11 @@ async function init() {
         const password = $("password").value;
         if (!email || !password) throw new Error("Enter email + password.");
         setStatus("Creating account…");
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: LOGIN_URL }
+        });
         if (error) throw error;
         setStatus("Account created");
         const needsVerify = !data?.session;
@@ -121,6 +125,29 @@ async function init() {
             : "Account created. Contact an admin to be added to a team.",
           "ok"
         );
+      } catch (e) {
+        setStatus("Error");
+        setMsg(e?.message || String(e), "err");
+      }
+    };
+  }
+
+  const resendBtn = $("resendBtn");
+  if (resendBtn) {
+    resendBtn.onclick = async () => {
+      try {
+        setMsg("");
+        const email = $("email").value.trim();
+        if (!email) throw new Error("Enter your email first.");
+        setStatus("Resending confirmation…");
+        const { error } = await supabase.auth.resend({
+          type: "signup",
+          email,
+          options: { emailRedirectTo: LOGIN_URL }
+        });
+        if (error) throw error;
+        setStatus("Email sent");
+        setMsg("Confirmation email sent (check inbox/spam).", "ok");
       } catch (e) {
         setStatus("Error");
         setMsg(e?.message || String(e), "err");

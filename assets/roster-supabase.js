@@ -176,13 +176,19 @@ function renderPlayers(players) {
         const input = row.querySelector(`input[data-invite-email="${p.id}"]`);
         const email = (input?.value || '').trim();
         if (!email) return alert('Settu inn email');
+        const teamId = currentTeamId || getTeamId();
+        if (!teamId) return alert('Veldu lið fyrst (team_id vantar).');
 
         inviteBtn.disabled = true;
         const oldText = inviteBtn.textContent;
         inviteBtn.textContent = 'Sending...';
 
         try {
-          await api.invitePlayer(p.id, email);
+          if (api?.invitePlayerByEmailViaNetlify) {
+            await api.invitePlayerByEmailViaNetlify({ teamId, email });
+          } else {
+            await api.invitePlayer(p.id, email);
+          }
 
           // IMPORTANT: reload roster so status updates immediately
           await loadPlayersForTeam(currentTeamId);
