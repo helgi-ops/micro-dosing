@@ -102,6 +102,32 @@ async function init() {
     }
   };
 
+  const signUpBtn = $("signUpBtn");
+  if (signUpBtn) {
+    signUpBtn.onclick = async () => {
+      try {
+        setMsg("");
+        const email = $("email").value.trim();
+        const password = $("password").value;
+        if (!email || !password) throw new Error("Enter email + password.");
+        setStatus("Creating account…");
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setStatus("Account created");
+        const needsVerify = !data?.session;
+        setMsg(
+          needsVerify
+            ? "Check your email to confirm, then contact an admin to be added to a team."
+            : "Account created. Contact an admin to be added to a team.",
+          "ok"
+        );
+      } catch (e) {
+        setStatus("Error");
+        setMsg(e?.message || String(e), "err");
+      }
+    };
+  }
+
   const forgotLink = $("forgotPwLink") || $("forgotLink");
   if (forgotLink) {
     forgotLink.onclick = (e) => {

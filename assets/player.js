@@ -220,7 +220,9 @@ async function main() {
     const assignedWeekId = weekLink?.week_id;
     $("assignedWeek").textContent = weekLink?.week?.title || assignedWeekId || "—";
 
-    let weekDays = [];
+let weekDays = [];
+let cmjBestVal = null;
+let cmjRecentVal = null;
     if (assignedWeekId) {
       weekDays = await api.getWeekPreview(assignedWeekId);
       renderWeekPreview(weekDays);
@@ -239,8 +241,8 @@ async function main() {
     }
 
     const cmjSessions = await api.getCmjSessionHistory ? await api.getCmjSessionHistory(playerId, 50) : [];
-    const cmjBestVal = cmjSessions.length ? Math.max(...cmjSessions.map(c => c.avg_value || 0)) : null;
-    const cmjRecentVal = cmjSessions.length ? cmjSessions[0].avg_value : null;
+    cmjBestVal = cmjSessions.length ? Math.max(...cmjSessions.map(c => c.avg_value || 0)) : null;
+    cmjRecentVal = cmjSessions.length ? cmjSessions[0].avg_value : null;
     $("cmjBest").textContent = cmjBestVal ?? "—";
     $("cmjRecent").textContent = cmjRecentVal ?? "—";
 
@@ -253,6 +255,37 @@ async function main() {
         return;
       }
       $("cmjPct").textContent = `${((current / cmjBestVal) * 100).toFixed(1)}%`;
+    };
+
+    const assignWorkoutForToday = async (latestCheck) => {
+      if (!assignedWeekId) {
+        setStatus("No assigned week assigned yet.");
+        return;
+      }
+      const latestCmj = (await api.listCmjHistory(playerId, 5))[0];
+      const readinessCalc = computeReadinessState({
+        readiness: latestCheck.readiness,
+        soreness: latestCheck.soreness,
+        sleep: latestCheck.sleep,
+        cmjValue: latestCmj?.cmj_value,
+        cmjAllTimeBest: cmjBestVal || latestCmj?.cmj_value || null,
+        cmjMostRecent: cmjRecentVal
+      });
+      const idx = dayIndexFromISO(today);
+      const plannedDay = (weekDays || []).find(d => d.day_index === idx);
+      const plannedType = plannedDay?.session_type || plannedDay?.title || "Strength";
+      const mapped = mapSession(readinessCalc.readiness_state, (plannedType || "Strength").toUpperCase());
+      const payload = buildWorkoutPayload({ dayType: mapped, readinessState: readinessCalc.readiness_state });
+      const plan = await api.createGeneratedPlan({
+        playerId,
+        dateISO: today,
+        weekId: assignedWeekId,
+        readinessState: readinessCalc.readiness_state,
+        workoutPayload: payload,
+        source: "auto_readiness"
+      });
+      renderWorkout(plan);
+      setStatus("Workout assigned");
     };
 
     $("saveCheckinBtn").onclick = async () => {
@@ -285,6 +318,8 @@ async function main() {
         $("checkinStatus").textContent = `Submitted (${readinessCalc.readiness_state})`;
         $("checkinStatusInline").textContent = `Submitted (${readinessCalc.readiness_state})`;
         setStatus("Check-in saved");
+        // Auto-adjust today's workout based on the new readiness
+        await assignWorkoutForToday({ readiness, soreness, sleep });
       } catch (e) {
         setStatus(e?.message || String(e));
       }
@@ -324,35 +359,7 @@ async function main() {
         setStatus("Assigning workout…");
         const latestCheck = await api.getLatestCheckin(playerId, today);
         if (!latestCheck) throw new Error("Submit readiness first.");
-
-        const latestCmj = (await api.listCmjHistory(playerId, 5))[0];
-
-        const readinessCalc = computeReadinessState({
-          readiness: latestCheck.readiness,
-          soreness: latestCheck.soreness,
-          sleep: latestCheck.sleep,
-          cmjValue: latestCmj?.cmj_value,
-          cmjAllTimeBest: cmjBestVal || latestCmj?.cmj_value || null,
-          cmjMostRecent: cmjRecentVal
-        });
-
-        const idx = dayIndexFromISO(today);
-        const plannedDay = (weekDays || []).find(d => d.day_index === idx);
-        const plannedType = plannedDay?.session_type || plannedDay?.title || "Strength";
-        const mapped = mapSession(readinessCalc.readiness_state, plannedType.toUpperCase());
-        const payload = buildWorkoutPayload({ dayType: mapped, readinessState: readinessCalc.readiness_state });
-
-        const plan = await api.createGeneratedPlan({
-          playerId,
-          dateISO: today,
-          weekId: assignedWeekId,
-          readinessState: readinessCalc.readiness_state,
-          workoutPayload: payload,
-          source: "auto_readiness"
-        });
-
-        renderWorkout(plan);
-        setStatus("Workout assigned");
+        await assignWorkoutForToday(latestCheck);
       } catch (e) {
         setStatus(e?.message || String(e));
       }

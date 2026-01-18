@@ -1,8 +1,21 @@
 // assets/dataClient.js
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-const SUPABASE_URL = window.__SUPABASE_URL__;
-const SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY__;
+const SUPABASE_URL =
+  window.__SUPABASE_URL__ ||
+  localStorage.getItem("SUPABASE_URL") ||
+  "";
+
+const SUPABASE_ANON_KEY =
+  window.__SUPABASE_ANON_KEY__ ||
+  localStorage.getItem("SUPABASE_ANON_KEY") ||
+  "";
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error(
+    "Supabase config missing: set window.__SUPABASE_URL__ and window.__SUPABASE_ANON_KEY__ before loading dataClient.js"
+  );
+}
 const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
 const LOGIN_URL = baseUrl + "index.html";
 

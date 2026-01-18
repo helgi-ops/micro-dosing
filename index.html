@@ -15,6 +15,11 @@
       .err{color:rgba(255,120,120,.95)}
       .ok{color:rgba(140,255,170,.95)}
     </style>
+    <script>
+      // Supabase public client config (anon key is safe to expose)
+      window.__SUPABASE_URL__ = "https://tbtkxttiwbdmugjivmvb.supabase.co";
+      window.__SUPABASE_ANON_KEY__ = "sb_publishable_7ePvUt_6A7KKyGpV7eYfaQ_3w81AUuA";
+    </script>
   </head>
   <body>
     <div class="wrap">
@@ -45,7 +50,9 @@
           <div style="height:10px"></div>
           <div class="row">
             <button id="signInBtn">Sign in</button>
+            <button id="signUpBtn" type="button">Sign up</button>
           </div>
+          <p class="muted" style="margin:6px 0 0 0; font-size:13px;">New coach? Create an account, then contact an admin to be added to a team.</p>
         </div>
 
         <div id="resetArea" style="display:none; margin-top:12px;">
