@@ -3,15 +3,18 @@ import { api, supabase, waitForAuthReady, getCachedSession, listMyTeams } from "
 
 function el(id) { return document.getElementById(id); }
 
-function setActiveTeam(teamId) {
+function setActiveTeam(teamId, label) {
   window.__selectedTeamId = teamId || "";
   window.currentTeamId = teamId || "";
   try {
     localStorage.setItem("selectedTeamId", teamId || "");
     localStorage.setItem("selected_team_id", teamId || "");
+    localStorage.setItem("active_team_id", teamId || "");
   } catch (_) {}
   const topSel = document.getElementById("teamSelectTopbar");
   if (topSel) topSel.value = teamId || "";
+  const teamLine = document.getElementById("teamStatusLine");
+  if (teamLine) teamLine.textContent = teamId ? `Lið: ${label || teamId}` : "Lið: —";
   window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: teamId || "" } }));
   window.dispatchEvent(new Event("team:changed"));
 }
@@ -58,7 +61,9 @@ async function loadTeams() {
 
   if (selected) {
     topSel.value = selected;
-    setActiveTeam(selected);
+    const active = teams.find(t => (t.team_id || t.id) === selected) || {};
+    const label = active.team?.name || active.name || active.team_id || selected;
+    setActiveTeam(selected, label);
   } else {
     setActiveTeam("");
     const statusLine = document.getElementById("teamStatusLine");
@@ -71,7 +76,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (topSel && !topSel.dataset.bound) {
     topSel.dataset.bound = "1";
     topSel.addEventListener("change", () => {
-      setActiveTeam(topSel.value || "");
+      const val = topSel.value || "";
+      const label = topSel.selectedOptions?.[0]?.textContent || val;
+      setActiveTeam(val, label);
     });
   }
   loadTeams();
