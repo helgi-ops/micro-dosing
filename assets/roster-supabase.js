@@ -20,6 +20,7 @@ function byId(id) { return document.getElementById(id); }
 function getTeamId() {
   return (
     window.__selectedTeamId ||
+    localStorage.getItem("active_team_id") ||
     localStorage.getItem("selectedTeamId") ||
     localStorage.getItem("selected_team_id") ||
     ""

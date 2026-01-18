@@ -8,7 +8,8 @@ import {
   markDayDone,
   supabase,
   waitForAuthReady,
-  getCachedSession
+  getCachedSession,
+  listMyTeams
 } from "./dataClient.js";
 import { DAY_TYPE_OPTIONS, normalizeDayType, getDayTypeProfile } from "./dayTypeProfiles.js";
 import { requireRole } from "./guard.js";
@@ -72,7 +73,7 @@ if (!window.__abortRejectionGuardInstalled) {
   }
 
   function getWeekStateKey() {
-    const team = localStorage.getItem('selected_team_id') || localStorage.getItem('selectedTeamId') || 'team';
+    const team = localStorage.getItem('active_team_id') || localStorage.getItem('selected_team_id') || localStorage.getItem('selectedTeamId') || 'team';
     const player = (document.getElementById('playerSelect')?.value || 'default').replace(/\s+/g, '-');
     return `weekState_v1_${team}_${player}`;
   }
@@ -140,42 +141,49 @@ if (!window.__abortRejectionGuardInstalled) {
       line.textContent = `Innskráð(ur): ${email}`;
       if (signOutBtn) signOutBtn.style.display = "inline-flex";
 
-      const teamId =
+      let teamId =
         window.currentTeamId ||
         window.__selectedTeamId ||
         localStorage.getItem("active_team_id") ||
         localStorage.getItem("selectedTeamId") ||
         localStorage.getItem("selected_team_id") ||
         "";
-      const teamName = teamId ? getSelectedTeamName(teamId) : "";
-      if (teamLine) teamLine.textContent = teamId ? `Lið: ${teamName || teamId || "—"}` : "Lið: —";
 
-      // If signed in but no team selected yet -> auto pick first team option
+      // If signed in but no team selected yet -> auto pick first membership
       if (!teamId) {
-        const topSel = document.getElementById("teamSelectTopbar");
-        const authSel = document.getElementById("authBoxTeamSelect");
-        const sel = topSel || authSel;
-
-        if (sel && sel.options && sel.options.length > 0) {
-          // pick first non-empty, non "—" option
-          const opt = Array.from(sel.options).find(o => o.value && !String(o.value).startsWith("—"));
-          if (opt) {
-            const picked = opt.value;
-            try {
-              localStorage.setItem("selected_team_id", picked);
-              localStorage.setItem("selectedTeamId", picked);
-            } catch {}
-            window.__selectedTeamId = picked;
-            window.currentTeamId = picked;
-
-            // update UI + notify rest of app
-            if (topSel) topSel.value = picked;
-            if (authSel) authSel.value = picked;
-
-            window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: picked } }));
+        try {
+          const memberships = await listMyTeams();
+          if (memberships?.length) {
+            const first = memberships[0];
+            teamId = first.team_id || first.id;
+            const label = first.team?.name || first.name || teamId;
+            localStorage.setItem("active_team_id", teamId);
+            localStorage.setItem("selected_team_id", teamId);
+            localStorage.setItem("selectedTeamId", teamId);
+            window.__selectedTeamId = teamId;
+            window.currentTeamId = teamId;
+            const topSel = document.getElementById("teamSelectTopbar");
+            if (topSel) {
+              // ensure option exists
+              const opt = Array.from(topSel.options || []).find(o => o.value === teamId);
+              if (!opt) {
+                const newOpt = document.createElement("option");
+                newOpt.value = teamId;
+                newOpt.textContent = label;
+                topSel.appendChild(newOpt);
+              }
+              topSel.value = teamId;
+            }
+            window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId } }));
+            if (teamLine) teamLine.textContent = `Lið: ${label}`;
           }
+        } catch (err) {
+          console.warn("[team] auto-select from memberships failed", err);
         }
       }
+
+      const teamName = teamId ? getSelectedTeamName(teamId) : "";
+      if (teamLine) teamLine.textContent = teamId ? `Lið: ${teamName || teamId || "—"}` : "Lið: —";
 
       if (signOutBtn && !signOutBtn.dataset.bound) {
         signOutBtn.dataset.bound = "1";
