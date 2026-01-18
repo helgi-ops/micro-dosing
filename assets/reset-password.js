@@ -22,6 +22,23 @@ async function init() {
   const btn = $("setPasswordBtn");
   btn.disabled = true; // enable only when session is valid
 
+  // If tokens arrive in URL fragment (implicit flow), set session from them
+  try {
+    const hash = window.location.hash || "";
+    if (hash.includes("access_token=") && hash.includes("refresh_token=")) {
+      const params = new URLSearchParams(hash.replace(/^#/, ""));
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+
+      if (access_token && refresh_token) {
+        await supabase.auth.setSession({ access_token, refresh_token });
+        history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  } catch (e) {
+    // ignore; will be caught by session check
+  }
+
   // 1) Finalize PKCE recovery link (MUST be awaited)
   try {
     const url = new URL(window.location.href);
