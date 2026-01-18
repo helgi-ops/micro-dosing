@@ -34,10 +34,7 @@ async function loadTeams() {
   if (!session) return;
 
   const topSel = document.getElementById("teamSelectTopbar");
-  if (!topSel) return;
-
-  const placeholder = `<option value="">— Veldu lið —</option>`;
-  topSel.innerHTML = placeholder;
+  const statusLine = document.getElementById("teamStatusLine");
 
   let teams = [];
   try {
@@ -48,25 +45,34 @@ async function loadTeams() {
     console.error("Teams load failed:", e);
   }
 
-  const opts = teams.map(t => `<option value="${t.team_id || t.id}">${t.team?.name || t.name || t.team_id}</option>`).join("");
-  topSel.innerHTML = placeholder + opts;
+  if (!teams.length) {
+    if (topSel) topSel.innerHTML = `<option value="">— Veldu lið —</option>`;
+    setActiveTeam("");
+    if (statusLine) statusLine.textContent = "Lið: No team access";
+    return;
+  }
+
+  const placeholder = `<option value="">— Veldu lið —</option>`;
+  if (topSel) {
+    const opts = teams.map(t => `<option value="${t.team_id || t.id}">${t.team?.name || t.name || t.team_id}</option>`).join("");
+    topSel.innerHTML = placeholder + opts;
+  }
 
   let selected = "";
   if (teams.length === 1) {
     selected = teams[0].team_id || teams[0].id;
   } else {
-    const stored = localStorage.getItem("selectedTeamId") || "";
+    const stored = localStorage.getItem("active_team_id") || localStorage.getItem("selectedTeamId") || "";
     if (stored && teams.some(t => (t.team_id || t.id) === stored)) selected = stored;
   }
 
   if (selected) {
-    topSel.value = selected;
+    if (topSel) topSel.value = selected;
     const active = teams.find(t => (t.team_id || t.id) === selected) || {};
     const label = active.team?.name || active.name || active.team_id || selected;
     setActiveTeam(selected, label);
   } else {
     setActiveTeam("");
-    const statusLine = document.getElementById("teamStatusLine");
     if (statusLine) statusLine.textContent = "Lið: No team access";
   }
 }

@@ -94,7 +94,7 @@ if (!window.__abortRejectionGuardInstalled) {
 
   async function loadSessionAndRenderAuthStatus() {
     const line = el("authStatusLine");
-    const teamLine = el("teamStatusLine");
+      const teamLine = el("teamStatusLine");
     const signOutBtn = el("signOutBtn");
     if (!line || !supabaseClient) return;
 
@@ -125,6 +125,7 @@ if (!window.__abortRejectionGuardInstalled) {
         try {
           localStorage.removeItem("selectedTeamId");
           localStorage.removeItem("selected_team_id");
+          localStorage.removeItem("active_team_id");
         } catch (_) {}
         window.__selectedTeamId = "";
         window.currentTeamId = "";
@@ -142,6 +143,7 @@ if (!window.__abortRejectionGuardInstalled) {
       const teamId =
         window.currentTeamId ||
         window.__selectedTeamId ||
+        localStorage.getItem("active_team_id") ||
         localStorage.getItem("selectedTeamId") ||
         localStorage.getItem("selected_team_id") ||
         "";
