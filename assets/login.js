@@ -205,7 +205,7 @@ async function init() {
       if (!email) throw new Error("Enter your email.");
       setStatus("Sending reset link…");
       await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: RESET_URL
+        redirectTo: `${location.origin}/reset-password.html`,
       });
       setStatus("If an account exists, reset link sent");
       setMsg("If an account exists for this email, a password reset link has been sent.", "ok");
