@@ -701,6 +701,33 @@ export function getAuthSession() {
   return getCachedSession();
 }
 
+// List teams for current user via team_members (coach/admin source of truth)
+export async function listMyTeams() {
+  const { data: { session }, error: sessErr } = await supabase.auth.getSession();
+  if (sessErr) throw sessErr;
+  if (!session?.user?.id) return [];
+
+  const { data, error } = await supabase
+    .from("team_members")
+    .select(`
+      team_id,
+      role,
+      teams:team_id (
+        id,
+        name
+      )
+    `)
+    .eq("user_id", session.user.id);
+
+  if (error) throw error;
+
+  return (data || []).map((r) => ({
+    team_id: r.team_id,
+    role: r.role,
+    team: r.teams,
+  }));
+}
+
 export async function initAuth() {
   const session = await waitForAuthReady();
   window.dispatchEvent(new CustomEvent('auth:changed', { detail: { session, event: 'INITIAL' } }));

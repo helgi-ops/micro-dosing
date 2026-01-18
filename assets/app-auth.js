@@ -1,20 +1,7 @@
 // assets/app-auth.js
-import { api, supabase, waitForAuthReady, getCachedSession } from "./dataClient.js";
+import { api, supabase, waitForAuthReady, getCachedSession, listMyTeams } from "./dataClient.js";
 
 function el(id) { return document.getElementById(id); }
-
-async function fetchTeamsForUser(session) {
-  const { data, error } = await supabase
-    .from("team_members")
-    .select("team_id, role, teams(id,name)")
-    .eq("user_id", session.user.id)
-    .in("role", ["coach", "admin"]);
-  if (error) throw error;
-  return (data || []).map((row) => ({
-    id: row.teams?.id || row.team_id,
-    name: row.teams?.name || row.team_id
-  })).filter(t => t.id);
-}
 
 function setActiveTeam(teamId) {
   window.__selectedTeamId = teamId || "";
@@ -51,20 +38,22 @@ async function loadTeams() {
 
   let teams = [];
   try {
-    teams = await fetchTeamsForUser(session);
+    teams = await listMyTeams();
+    console.log("[team] user", session.user.id);
+    console.log("[team] memberships", teams);
   } catch (e) {
     console.error("Teams load failed:", e);
   }
 
-  const opts = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+  const opts = teams.map(t => `<option value="${t.team_id || t.id}">${t.team?.name || t.name || t.team_id}</option>`).join("");
   topSel.innerHTML = placeholder + opts;
 
   let selected = "";
   if (teams.length === 1) {
-    selected = teams[0].id;
+    selected = teams[0].team_id || teams[0].id;
   } else {
     const stored = localStorage.getItem("selectedTeamId") || "";
-    if (stored && teams.some(t => t.id === stored)) selected = stored;
+    if (stored && teams.some(t => (t.team_id || t.id) === stored)) selected = stored;
   }
 
   if (selected) {
@@ -72,6 +61,8 @@ async function loadTeams() {
     setActiveTeam(selected);
   } else {
     setActiveTeam("");
+    const statusLine = document.getElementById("teamStatusLine");
+    if (statusLine) statusLine.textContent = "Lið: No team access";
   }
 }
 
