@@ -1,90 +1,117 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+type Body = {
+  team_id: string;
+  player_id: string;
+  email: string;
+  redirect_to?: string;
+  mode?: "invite" | "resend";
+};
+
 serve(async (req) => {
   try {
     if (req.method !== "POST") {
-      return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+      return new Response("Method not allowed", { status: 405 });
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    const authHeader = req.headers.get("Authorization") || "";
-    const jwt = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!jwt) {
-      return new Response(JSON.stringify({ error: "Missing Authorization Bearer token" }), { status: 401 });
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const jwt = authHeader.replace("Bearer ", "");
+    if (!jwt) return new Response("Missing auth", { status: 401 });
+
+    // User client to validate caller
+    const supabaseUser = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: `Bearer ${jwt}` } } }
+    );
+
+    const { data: me, error: meErr } = await supabaseUser.auth.getUser();
+    if (meErr || !me?.user) return new Response("Unauthorized", { status: 401 });
+
+    const body = (await req.json()) as Body;
+    const email = (body.email || "").trim().toLowerCase();
+    const team_id = body.team_id;
+    const player_id = body.player_id;
+    const mode = body.mode ?? "invite";
+
+    if (!team_id || !player_id || !email) {
+      return new Response("Missing team_id/player_id/email", { status: 400 });
     }
 
-    const body = await req.json();
-    const player_id = String(body.player_id || "");
-    const invite_email = String(body.invite_email || "");
-    const redirect_to = String(body.redirect_to || "");
-
-    if (!player_id || !invite_email) {
-      return new Response(JSON.stringify({ error: "player_id and invite_email required" }), { status: 400 });
-    }
-
-    // USER client (uses caller JWT)
-    const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${jwt}` } },
-    });
-
-    const { data: userData, error: userErr } = await supabaseUser.auth.getUser();
-    if (userErr || !userData?.user) {
-      return new Response(JSON.stringify({ error: "Invalid user session" }), { status: 401 });
-    }
-    const coach_uid = userData.user.id;
-
-    // Fetch player team_id (RLS must allow coach to read players in their team)
-    const { data: player, error: pErr } = await supabaseUser
-      .from("players")
-      .select("id, team_id")
-      .eq("id", player_id)
-      .single();
-
-    if (pErr || !player) {
-      return new Response(JSON.stringify({ error: "Player not found or access denied" }), { status: 403 });
-    }
-
-    // Confirm coach is team member
-    const { data: tm, error: tmErr } = await supabaseUser
+    // Verify coach membership
+    const { data: membership, error: mErr } = await supabaseAdmin
       .from("team_members")
-      .select("id")
-      .eq("team_id", player.team_id)
-      .eq("user_id", coach_uid)
+      .select("role")
+      .eq("team_id", team_id)
+      .eq("user_id", me.user.id)
       .maybeSingle();
 
-    if (tmErr || !tm) {
-      return new Response(JSON.stringify({ error: "Not a team member" }), { status: 403 });
+    if (mErr || !membership) {
+      return new Response("Forbidden (not team member)", { status: 403 });
     }
 
-    // ADMIN client (service role) to send invite + update players
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    const { error: upErr } = await supabaseAdmin
+    // Ensure player belongs to team
+    const { data: player, error: pErr } = await supabaseAdmin
       .from("players")
-      .update({ invite_email, invite_sent_at: new Date().toISOString() })
-      .eq("id", player_id);
+      .select("id, team_id, invite_status, invite_email, auth_user_id")
+      .eq("id", player_id)
+      .maybeSingle();
 
-    if (upErr) {
-      return new Response(JSON.stringify({ error: upErr.message }), { status: 400 });
-    }
+    if (pErr || !player) return new Response("Player not found", { status: 404 });
+    if (player.team_id !== team_id) return new Response("Forbidden (wrong team)", { status: 403 });
 
-    const { data: invited, error: invErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(invite_email, {
-      redirectTo: redirect_to || undefined,
-    });
+    const redirectTo =
+      body.redirect_to ??
+      `${req.headers.get("origin") ?? ""}/index.html`;
+
+    const { data: invited, error: invErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      email,
+      { redirectTo }
+    );
 
     if (invErr) {
-      return new Response(JSON.stringify({ error: invErr.message }), { status: 400 });
+      return new Response(JSON.stringify({ ok: false, error: invErr.message }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    return new Response(JSON.stringify({ ok: true, invited }), {
-      status: 200,
+    const now = new Date().toISOString();
+    const patch: Record<string, any> = {
+      invite_email: email,
+      invite_status: "invited",
+      invite_sent_at: now,
+    };
+
+    if (mode === "resend") {
+      patch.invite_resend_count = (player as any).invite_resend_count
+        ? (player as any).invite_resend_count + 1
+        : 1;
+    }
+
+    if (invited?.user?.id) patch.auth_user_id = invited.user.id;
+
+    const { error: upErr } = await supabaseAdmin.from("players").update(patch).eq("id", player_id);
+    if (upErr) {
+      return new Response(JSON.stringify({ ok: false, error: upErr.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(
+      JSON.stringify({ ok: true, player_id, email, invited_user_id: invited?.user?.id ?? null }),
+      { headers: { "Content-Type": "application/json" } }
+    );
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: String((e as any)?.message || e) }), { status: 500 });
   }
 });

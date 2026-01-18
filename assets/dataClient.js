@@ -687,8 +687,24 @@ export async function invitePlayer(playerId, inviteEmail) {
   return json;
 }
 
+export async function invitePlayerEmail({ team_id, player_id, email, mode = "invite" }) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const access_token = sessionData?.session?.access_token;
+  if (!access_token) throw new Error("Not signed in");
+
+  const { data, error } = await supabase.functions.invoke("invite-player", {
+    body: { team_id, player_id, email, mode },
+    headers: { Authorization: `Bearer ${access_token}` }
+  });
+
+  if (error) throw error;
+  if (!data?.ok) throw new Error(data?.error || "Invite failed");
+  return data;
+}
+
 // Expose Netlify invite helper for coach UI
 api.invitePlayerByEmailViaNetlify = invitePlayerByEmailViaNetlify;
+api.invitePlayerEmail = invitePlayerEmail;
 
 // expose on api for convenience
 api.invitePlayer = invitePlayer;
