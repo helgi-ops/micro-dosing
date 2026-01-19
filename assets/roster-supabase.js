@@ -171,27 +171,31 @@ function renderPlayers(players) {
       window.location.href = `./player.html?id=${encodeURIComponent(p.id)}`;
     });
 
-  const inviteBtn = row.querySelector(`button[data-invite-send="${p.id}"]`);
-  if (inviteBtn && !inviteBtn.disabled) {
-    inviteBtn.addEventListener('click', async () => {
-      const input = row.querySelector(`input[data-invite-email="${p.id}"]`);
-      const email = (input?.value || '').trim();
-      if (!email) return alert('Settu inn email');
-      const teamId = currentTeamId || getTeamId();
-      if (!teamId) return alert('Veldu lið fyrst (team_id vantar).');
+    const inviteBtn = row.querySelector(`button[data-invite-send="${p.id}"]`);
+    if (inviteBtn && !inviteBtn.disabled) {
+      inviteBtn.addEventListener('click', async () => {
+        const input = row.querySelector(`input[data-invite-email="${p.id}"]`);
+        const email = (input?.value || '').trim();
+        if (!email) return alert('Settu inn email');
+        const teamId = currentTeamId || getTeamId();
+        if (!teamId) return alert('Veldu lið fyrst (team_id vantar).');
 
-      inviteBtn.disabled = true;
-      const oldText = inviteBtn.textContent;
-      inviteBtn.textContent = 'Sending...';
+        inviteBtn.disabled = true;
+        const oldText = inviteBtn.textContent;
+        inviteBtn.textContent = 'Sending...';
 
-      try {
-        if (api?.invitePlayerEmail) {
-          await api.invitePlayerEmail({ team_id: teamId, player_id: p.id, email, mode: "invite" });
-        } else if (api?.invitePlayerByEmailViaNetlify) {
-          await api.invitePlayerByEmailViaNetlify({ teamId, email });
-        } else {
-          await api.invitePlayer(p.id, email);
-        }
+        try {
+          const { error } = await supabase.functions.invoke("send-invite", {
+            body: {
+              email,
+              player_id: p.id,
+              team_id: teamId
+            }
+          });
+
+          if (error) {
+            throw new Error(error?.message || "Invite failed");
+          }
 
         // IMPORTANT: reload roster so status updates immediately
         await loadPlayersForTeam(currentTeamId);
@@ -201,8 +205,8 @@ function renderPlayers(players) {
         inviteBtn.textContent = oldText || 'Send invite';
         alert(e?.message || String(e));
       }
-      });
-    }
+    });
+  }
 
     list.appendChild(row);
   });
