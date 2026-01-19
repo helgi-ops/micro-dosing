@@ -18,6 +18,8 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 }
 const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
 const LOGIN_URL = `${window.location.origin}/coach.html`;
+export const SUPABASE_URL_PUBLIC = SUPABASE_URL;
+export const SUPABASE_ANON_PUBLIC = SUPABASE_ANON_KEY;
 
 export const supabase = createClient(
   SUPABASE_URL,

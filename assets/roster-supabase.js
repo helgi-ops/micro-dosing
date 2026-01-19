@@ -1,5 +1,5 @@
 // assets/roster-supabase.js
-import { api, supabase, getCachedSession, isAuthReady } from "./dataClient.js";
+import { api, supabase, getCachedSession, isAuthReady, SUPABASE_URL_PUBLIC, SUPABASE_ANON_PUBLIC } from "./dataClient.js";
 
 // DEBUG proof-of-life
 window.__ROSTER_SUPABASE_LOADED_AT = new Date().toISOString();
@@ -185,20 +185,27 @@ function renderPlayers(players) {
         inviteBtn.textContent = 'Sending...';
 
         try {
-          const { data, error } = await supabase.functions.invoke("send-invite", {
-            body: {
+          const resp = await fetch(`${SUPABASE_URL_PUBLIC}/functions/v1/send-invite`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": SUPABASE_ANON_PUBLIC,
+              "Authorization": `Bearer ${SUPABASE_ANON_PUBLIC}`
+            },
+            body: JSON.stringify({
               email,
               player_id: p.id,
               team_id: teamId
-            }
+            })
           });
 
-          if (error) {
-            console.error("send-invite error", error);
-            throw new Error(error?.message || "Invite failed");
-          }
-          if (data && data.ok === false) {
-            throw new Error(data.error || "Invite failed");
+          const text = await resp.text();
+          let data = null;
+          try { data = text ? JSON.parse(text) : null; } catch (_) {}
+
+          if (!resp.ok || (data && data.ok === false)) {
+            const msg = data?.error || text || `Invite failed (HTTP ${resp.status})`;
+            throw new Error(msg);
           }
 
         // IMPORTANT: reload roster so status updates immediately
