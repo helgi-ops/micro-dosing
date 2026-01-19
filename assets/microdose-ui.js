@@ -117,7 +117,13 @@ if (!window.__abortRejectionGuardInstalled) {
         new Promise((_, rej) => setTimeout(() => rej(new Error("auth timeout")), 2000))
       ]).catch(() => null);
 
-      const session = getCachedSession();
+      let session = getCachedSession();
+      if (!session) {
+        try {
+          const { data } = await supabaseClient.auth.getSession();
+          session = data?.session || null;
+        } catch (_) {}
+      }
       const user = session?.user;
       if (!session || !user) {
         line.textContent = "Ekki innskráð(ur). Sendu innskráningartengil.";
