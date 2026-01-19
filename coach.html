@@ -4633,10 +4633,10 @@
       document.documentElement.classList.remove("auth-loading");
     },
     onUnAuthed: () => {
-      if (authLoopLock.hasRecentLock()) return;
-      if (location.pathname.endsWith("/index.html") || location.pathname === "/") return;
-      authLoopLock.setLock();
-      location.replace("/index.html");
+      // Stay on page; show minimal message instead of redirecting immediately
+      const status = document.getElementById("authStatusLine");
+      if (status) status.textContent = "Ekki innskráð(ur).";
+      document.documentElement.classList.remove("auth-loading");
     }
   });
 </script>
