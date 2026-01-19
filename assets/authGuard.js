@@ -21,8 +21,13 @@ export async function requireAuth({ onAuthed, onUnAuthed }) {
     else onUnAuthed?.();
   });
 
-  if (session) onAuthed?.(session);
-  else onUnAuthed?.();
+  if (session) {
+    onAuthed?.(session);
+  } else {
+    // If a redirect just happened, give auth a moment before treating as unauthed
+    if (hasRecentLock()) return;
+    onUnAuthed?.();
+  }
 }
 
 export const authLoopLock = { setLock, hasRecentLock };
