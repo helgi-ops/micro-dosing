@@ -736,28 +736,20 @@ export function getAuthSession() {
 
 // List teams for current user via team_members (coach/admin source of truth)
 export async function listMyTeams() {
-  const { data: { session }, error: sessErr } = await supabase.auth.getSession();
-  if (sessErr) throw sessErr;
-  if (!session?.user?.id) return [];
+  const session = await api.getSession();
+  const userId = session?.user?.id;
+  if (!userId) return [];
 
   const { data, error } = await supabase
     .from("team_members")
-    .select(`
-      team_id,
-      role,
-      teams:team_id (
-        id,
-        name
-      )
-    `)
-    .eq("user_id", session.user.id);
+    .select("team_id, teams:team_id ( id, name )")
+    .eq("user_id", userId);
 
   if (error) throw error;
 
-  return (data || []).map((r) => ({
+  return (data || []).map(r => ({
     team_id: r.team_id,
-    role: r.role,
-    team: r.teams,
+    team: r.teams
   }));
 }
 

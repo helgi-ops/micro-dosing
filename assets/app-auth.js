@@ -32,7 +32,6 @@ async function ensureSessionOrRedirect() {
 let __loadingTeams = false;
 
 async function loadTeams() {
-  // prevent double-load racing (DOMContentLoaded + onAuthStateChange)
   if (__loadingTeams) return;
   __loadingTeams = true;
 
@@ -43,19 +42,19 @@ async function loadTeams() {
     const topSel = document.getElementById("teamSelectTopbar");
     const statusLine = document.getElementById("teamStatusLine");
 
-    let teams = null;
+    let teams;
     try {
       teams = await listMyTeams();
       console.log("[team] user", session.user.id);
       console.log("[team] memberships", teams);
     } catch (e) {
-      // Do NOT wipe active team on transient failure
-      console.error("Teams load failed (keeping previous team):", e);
+      // ✅ Ekki tæma active team á transient error
+      console.error("Teams load failed (keeping current team):", e);
       if (statusLine) statusLine.textContent = "Lið: —";
       return;
     }
 
-    // If teams is a valid loaded result but empty => truly no access
+    // Ef þetta er raunverulega tómt => enginn aðgangur
     if (!Array.isArray(teams) || teams.length === 0) {
       if (topSel) topSel.innerHTML = `<option value="">— Veldu lið —</option>`;
       setActiveTeam("");
@@ -63,22 +62,20 @@ async function loadTeams() {
       return;
     }
 
-    // Build dropdown options
+    // Build dropdown
     const placeholder = `<option value="">— Veldu lið —</option>`;
     if (topSel) {
       const opts = teams
         .map(t => {
           const id = t.team_id || t.id;
-          const name = t.team?.name || t.name || id;
+          const name = t.team?.name || t.name || t.team_id || id;
           return `<option value="${id}">${name}</option>`;
         })
         .join("");
       topSel.innerHTML = placeholder + opts;
     }
 
-    // Always pick a valid team:
-    // 1) stored if valid
-    // 2) otherwise first team
+    // ✅ Always select a valid team: stored if valid, else FIRST
     const stored =
       localStorage.getItem("active_team_id") ||
       localStorage.getItem("selectedTeamId") ||
@@ -89,7 +86,7 @@ async function loadTeams() {
     if (stored && teams.some(t => (t.team_id || t.id) === stored)) {
       selected = stored;
     } else {
-      selected = (teams[0].team_id || teams[0].id) || "";
+      selected = teams[0].team_id || teams[0].id; // <-- mikilvægasta línan
     }
 
     if (topSel) topSel.value = selected;
