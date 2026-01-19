@@ -1,5 +1,5 @@
 // assets/dataClient.js
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL =
   window.__SUPABASE_URL__ ||
@@ -19,14 +19,17 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
 const LOGIN_URL = `${window.location.origin}/coach.html`;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: "coach-dashboard-auth",
-  },
-});
+export const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  }
+);
 window.supabase = supabase;
 
 // Handle magic-link landing early so session is stored and hash cleared
