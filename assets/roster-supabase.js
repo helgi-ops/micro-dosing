@@ -185,7 +185,7 @@ function renderPlayers(players) {
         inviteBtn.textContent = 'Sending...';
 
         try {
-          const { error } = await supabase.functions.invoke("send-invite", {
+          const { data, error } = await supabase.functions.invoke("send-invite", {
             body: {
               email,
               player_id: p.id,
@@ -195,6 +195,9 @@ function renderPlayers(players) {
 
           if (error) {
             throw new Error(error?.message || "Invite failed");
+          }
+          if (data && data.ok === false) {
+            throw new Error(data.error || "Invite failed");
           }
 
         // IMPORTANT: reload roster so status updates immediately

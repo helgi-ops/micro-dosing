@@ -28,8 +28,8 @@ serve(async (req) => {
     const team_id = body?.team_id ?? null;
 
     if (!email) {
-      return new Response(JSON.stringify({ error: "email is required" }), {
-        status: 400,
+      return new Response(JSON.stringify({ ok: false, error: "email is required" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -61,8 +61,8 @@ serve(async (req) => {
 
     if (inviteErr) {
       console.error("auth invite error:", inviteErr);
-      return new Response(JSON.stringify({ error: inviteErr.message }), {
-        status: 400,
+      return new Response(JSON.stringify({ ok: false, error: inviteErr.message }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
