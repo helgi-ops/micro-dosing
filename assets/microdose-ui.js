@@ -182,6 +182,8 @@ if (!window.__abortRejectionGuardInstalled) {
             }
             window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId } }));
             if (teamLine) teamLine.textContent = `Lið: ${label}`;
+          } else {
+            if (teamLine) teamLine.textContent = "Lið: No team access";
           }
         } catch (err) {
           console.warn("[team] auto-select from memberships failed", err);
