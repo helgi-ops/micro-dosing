@@ -36,10 +36,7 @@ function setActiveTeam(teamId, label) {
 async function ensureSessionOrRedirect() {
   await waitForAuthReady?.();
   const session = getCachedSession?.() || (await supabase.auth.getSession()).data?.session;
-  if (!session) {
-    window.location.href = "./index.html";
-    return null;
-  }
+  if (!session) return null; // let outer guards handle redirect
   return session;
 }
 
