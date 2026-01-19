@@ -4626,19 +4626,21 @@
 
 <!-- 3️⃣ Auth + Team selector -->
 <script type="module">
-  import { requireAuth, authLoopLock } from "./assets/authGuard.js";
+  import { supabase } from "./assets/dataClient.js";
+  const params = new URLSearchParams(location.search);
+  const DEBUG = params.get("debug") === "1";
 
-  requireAuth({
-    onAuthed: async () => {
-      document.documentElement.classList.remove("auth-loading");
-    },
-    onUnAuthed: () => {
-      // Stay on page; show minimal message instead of redirecting immediately
-      const status = document.getElementById("authStatusLine");
-      if (status) status.textContent = "Ekki innskráð(ur).";
-      document.documentElement.classList.remove("auth-loading");
+  async function ensureAuthed() {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      if (!DEBUG) location.replace("/index.html");
+      return false;
     }
-  });
+    document.documentElement.classList.remove("auth-loading");
+    return true;
+  }
+
+  await ensureAuthed();
 </script>
 <script type="module" src="./assets/app-auth.js"></script>
 
