@@ -4,18 +4,32 @@ import { api, supabase, waitForAuthReady, getCachedSession, listMyTeams } from "
 function el(id) { return document.getElementById(id); }
 
 function setActiveTeam(teamId, label) {
-  window.__selectedTeamId = teamId || "";
-  window.currentTeamId = teamId || "";
+  const id = teamId || "";
+
+  window.__selectedTeamId = id;
+  window.currentTeamId = id;
+
+  // ✅ Aldrei skrifa tómt teamId í localStorage (það eyðileggur persist)
   try {
-    localStorage.setItem("selectedTeamId", teamId || "");
-    localStorage.setItem("selected_team_id", teamId || "");
-    localStorage.setItem("active_team_id", teamId || "");
+    if (id) {
+      localStorage.setItem("selectedTeamId", id);
+      localStorage.setItem("selected_team_id", id);
+      localStorage.setItem("active_team_id", id);
+    } else {
+      // ef við viljum virkilega tæma, þá remove (ekki set "")
+      localStorage.removeItem("selectedTeamId");
+      localStorage.removeItem("selected_team_id");
+      localStorage.removeItem("active_team_id");
+    }
   } catch (_) {}
+
   const topSel = document.getElementById("teamSelectTopbar");
-  if (topSel) topSel.value = teamId || "";
+  if (topSel) topSel.value = id;
+
   const teamLine = document.getElementById("teamStatusLine");
-  if (teamLine) teamLine.textContent = teamId ? `Lið: ${label || teamId}` : "Lið: —";
-  window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: teamId || "" } }));
+  if (teamLine) teamLine.textContent = id ? `Lið: ${label || id}` : "Lið: —";
+
+  window.dispatchEvent(new CustomEvent("team:changed", { detail: { teamId: id } }));
   window.dispatchEvent(new Event("team:changed"));
 }
 
@@ -106,6 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
     topSel.dataset.bound = "1";
     topSel.addEventListener("change", () => {
       const val = topSel.value || "";
+      if (!val) return; // ✅ ekki skrifa tómt í storage
       const label = topSel.selectedOptions?.[0]?.textContent || val;
       setActiveTeam(val, label);
     });
