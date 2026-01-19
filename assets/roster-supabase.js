@@ -194,6 +194,7 @@ function renderPlayers(players) {
           });
 
           if (error) {
+            console.error("send-invite error", error);
             throw new Error(error?.message || "Invite failed");
           }
           if (data && data.ok === false) {
