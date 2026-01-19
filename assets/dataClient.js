@@ -2,24 +2,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = "https://tbtkxttiwbdmugjivmvb.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_7ePvUt_6A7KKyGpV7eYfaQ_3w81AUuAY";
+const SUPABASE_ANON_KEY = "sb_publishable_7ePvUt_6A7KKyGpV7eYfaQ_3w81AUuA";
 
 const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
 const LOGIN_URL = `${window.location.origin}/coach.html`;
 export const SUPABASE_URL_PUBLIC = SUPABASE_URL;
 export const SUPABASE_ANON_PUBLIC = SUPABASE_ANON_KEY;
 
-export const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
-    }
-  }
-);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabase = supabase;
 
 // Handle magic-link landing early so session is stored and hash cleared
