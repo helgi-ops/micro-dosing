@@ -1,21 +1,9 @@
 // assets/dataClient.js
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const SUPABASE_URL =
-  window.__SUPABASE_URL__ ||
-  localStorage.getItem("SUPABASE_URL") ||
-  "";
+const SUPABASE_URL = "https://tbtkxttiwbdmugjivmvb.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_7ePvUt_6A7KKyGpV7eYfaQ_3w81AUuAY";
 
-const SUPABASE_ANON_KEY =
-  window.__SUPABASE_ANON_KEY__ ||
-  localStorage.getItem("SUPABASE_ANON_KEY") ||
-  "";
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error(
-    "Supabase config missing: set window.__SUPABASE_URL__ and window.__SUPABASE_ANON_KEY__ before loading dataClient.js"
-  );
-}
 const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
 const LOGIN_URL = `${window.location.origin}/coach.html`;
 export const SUPABASE_URL_PUBLIC = SUPABASE_URL;
