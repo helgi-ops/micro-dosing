@@ -4626,24 +4626,14 @@
 
 <!-- 3️⃣ Auth + Team selector -->
 <script type="module">
-  import { supabase } from "./assets/dataClient.js";
-  const params = new URLSearchParams(location.search);
-  const DEBUG = params.get("debug") === "1";
-
-  async function ensureAuthed() {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) {
-      if (!DEBUG) location.replace("/index.html");
-      return false;
-    }
-    document.documentElement.classList.remove("auth-loading");
-    return true;
+  import { requireSession } from "./assets/authGuard.js";
+  const gate = await requireSession();
+  if (!gate.ok) {
+    throw new Error("No session");
   }
-
-  await ensureAuthed();
+  document.documentElement.classList.remove("auth-loading");
 </script>
 <script type="module" src="./assets/app-auth.js"></script>
-
 <script type="module" src="./assets/roster-supabase.js"></script>
 
 <!-- 4️⃣ Microdose kerfið þitt -->

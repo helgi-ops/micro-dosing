@@ -72,18 +72,8 @@
     </div>
 
     <script type="module">
-      import { requireAuth } from "./assets/authGuard.js";
-
-      requireAuth({
-        onAuthed: () => {
-          if (location.pathname.endsWith("/coach.html")) return;
-          localStorage.setItem("auth_redirect_lock_v1", String(Date.now()));
-          location.replace("/coach.html");
-        },
-        onUnAuthed: () => {
-          // stay on login
-        }
-      });
+      import { routeFromLogin } from "./assets/authGuard.js";
+      await routeFromLogin();
     </script>
     <script type="module" src="./assets/login.js"></script>
   </body>

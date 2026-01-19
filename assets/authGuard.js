@@ -1,33 +1,26 @@
 import { supabase } from "./dataClient.js";
 
-// Prevent redirect ping-pong
-const LOOP_KEY = "auth_redirect_lock_v1";
+export async function requireSession({ allowDebug = true } = {}) {
+  const params = new URLSearchParams(location.search);
+  const debug = allowDebug && params.get("debug") === "1";
 
-function setLock() {
-  localStorage.setItem(LOOP_KEY, String(Date.now()));
-}
-function hasRecentLock(ms = 1500) {
-  const v = Number(localStorage.getItem(LOOP_KEY) || "0");
-  return v && (Date.now() - v) < ms;
-}
+  const { data, error } = await supabase.auth.getSession();
+  if (error) console.warn("getSession error:", error);
 
-export async function requireAuth({ onAuthed, onUnAuthed }) {
-  const { data } = await supabase.auth.getSession();
-  const session = data?.session || null;
+  if (data?.session) return { ok: true, session: data.session, debug };
 
-  supabase.auth.onAuthStateChange((_event, newSession) => {
-    if (hasRecentLock()) return;
-    if (newSession) onAuthed?.(newSession);
-    else onUnAuthed?.();
-  });
-
-  if (session) {
-    onAuthed?.(session);
-  } else {
-    // If a redirect just happened, give auth a moment before treating as unauthed
-    if (hasRecentLock()) return;
-    onUnAuthed?.();
+  if (!debug) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    location.replace(`/index.html?next=${next}`);
   }
+  return { ok: false, session: null, debug };
 }
 
-export const authLoopLock = { setLock, hasRecentLock };
+export async function routeFromLogin() {
+  const { data } = await supabase.auth.getSession();
+  if (!data?.session) return;
+
+  const params = new URLSearchParams(location.search);
+  const next = params.get("next");
+  location.replace(next ? decodeURIComponent(next) : "/coach.html");
+}

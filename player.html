@@ -26,6 +26,13 @@
     </style>
   </head>
   <body>
+    <script type="module">
+      import { requireSession } from "./assets/authGuard.js";
+      const gate = await requireSession();
+      if (!gate.ok) {
+        throw new Error("No session");
+      }
+    </script>
     <div class="wrap">
       <div class="row" style="justify-content:space-between;">
         <div class="row">
