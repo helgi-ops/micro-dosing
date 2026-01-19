@@ -5,6 +5,29 @@ export const ROUTES = {
   login: baseUrl + "index.html",
 };
 
+function goLogin() {
+  // coach.html -> index.html
+  window.location.href = "./index.html";
+}
+
+async function getSessionFast(timeoutMs = 1500) {
+  return await Promise.race([
+    supabase.auth.getSession(),
+    new Promise((_, rej) => setTimeout(() => rej(new Error("session timeout")), timeoutMs)),
+  ]);
+}
+
+(async function guard() {
+  try {
+    const { data } = await getSessionFast();
+    const session = data?.session;
+    if (!session) goLogin();
+  } catch (_e) {
+    // ef auth hangir/timeout -> sendum í login
+    goLogin();
+  }
+})();
+
 export async function requireAuth(requiredRole) {
   const { data, error } = await supabase.auth.getSession();
   if (error) {

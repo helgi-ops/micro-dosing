@@ -71,6 +71,17 @@
       </div>
     </div>
 
+    <script type="module">
+      import { supabase } from "./assets/dataClient.js";
+
+      supabase.auth.getSession().then(({ data }) => {
+        if (data?.session) window.location.href = "./coach.html";
+      });
+
+      supabase.auth.onAuthStateChange((_evt, session) => {
+        if (session) window.location.href = "./coach.html";
+      });
+    </script>
     <script type="module" src="./assets/login.js"></script>
   </body>
 </html>

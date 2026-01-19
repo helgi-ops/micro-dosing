@@ -1,32 +1,78 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
-console.log("Hello from Functions!")
-
-Deno.serve(async (req) => {
-  const { name } = await req.json()
-  const data = {
-    message: `Hello ${name}!`,
+serve(async (req) => {
+  // 1) Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders, status: 200 });
   }
 
-  return new Response(
-    JSON.stringify(data),
-    { headers: { "Content-Type": "application/json" } },
-  )
-})
+  try {
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Method not allowed" }), {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-/* To invoke locally:
+    const { email, player_id, team_id } = await req.json();
 
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
+    if (!email) {
+      return new Response(JSON.stringify({ error: "email is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/send-invite' \
-    --header 'Authorization: Bearer eyJhbGciOiJFUzI1NiIsImtpZCI6ImI4MTI2OWYxLTIxZDgtNGYyZS1iNzE5LWMyMjQwYTg0MGQ5MCIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjIwODQxMzM3ODl9.eU91-5bpal3s9yf63xt9yvtWFVWdf-NkA4alF77z1Zf_yRVAdQmRzgtx42hbao8dVnaaWSwZnDWlLrCuJhxAKQ' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
+    // IMPORTANT:
+    // Service role is required for auth.admin.inviteUserByEmail
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-*/
+    // (Optional) Store invite row if you have a table for it
+    // Comment this out if you DON'T have player_invites table yet
+    const { error: dbError } = await supabase.from("player_invites").insert({
+      email,
+      player_id: player_id ?? null,
+      team_id: team_id ?? null,
+      status: "invited",
+    });
+
+    // If table doesn't exist, you'll get an error here.
+    // You can either create the table or just remove this insert.
+    if (dbError) {
+      console.error("DB insert error:", dbError);
+      // Don't hard-fail invite sending if DB insert fails (optional)
+      // return new Response(JSON.stringify({ error: dbError.message }), { ... })
+    }
+
+    const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email);
+
+    if (inviteError) {
+      console.error("Invite error:", inviteError);
+      return new Response(JSON.stringify({ error: inviteError.message }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("Function error:", err);
+    return new Response(JSON.stringify({ error: String(err?.message ?? err) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
