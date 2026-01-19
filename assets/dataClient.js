@@ -79,6 +79,23 @@ export const api = {
     if (error) throw error;
   },
 
+  async getMyTeams(userId) {
+    // RLS-safe: team_members -> teams join
+    const { data, error } = await supabase
+      .from("team_members")
+      .select("team_id, teams:team_id ( id, name )")
+      .eq("user_id", userId);
+
+    if (error) throw error;
+
+    const teams = (data || [])
+      .map(r => r.teams)
+      .filter(Boolean);
+
+    teams.sort((a,b) => (a.name || "").localeCompare(b.name || ""));
+    return teams;
+  },
+
   async getTeams() {
     const { data, error } = await supabase
       .from("teams")

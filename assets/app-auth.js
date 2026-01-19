@@ -29,51 +29,77 @@ async function ensureSessionOrRedirect() {
   return session;
 }
 
+let __loadingTeams = false;
+
 async function loadTeams() {
-  const session = await ensureSessionOrRedirect();
-  if (!session) return;
+  // prevent double-load racing (DOMContentLoaded + onAuthStateChange)
+  if (__loadingTeams) return;
+  __loadingTeams = true;
 
-  const topSel = document.getElementById("teamSelectTopbar");
-  const statusLine = document.getElementById("teamStatusLine");
-
-  let teams = [];
   try {
-    teams = await listMyTeams();
-    console.log("[team] user", session.user.id);
-    console.log("[team] memberships", teams);
-  } catch (e) {
-    console.error("Teams load failed:", e);
-  }
+    const session = await ensureSessionOrRedirect();
+    if (!session) return;
 
-  if (!teams.length) {
-    if (topSel) topSel.innerHTML = `<option value="">— Veldu lið —</option>`;
-    setActiveTeam("");
-    if (statusLine) statusLine.textContent = "Lið: No team access";
-    return;
-  }
+    const topSel = document.getElementById("teamSelectTopbar");
+    const statusLine = document.getElementById("teamStatusLine");
 
-  const placeholder = `<option value="">— Veldu lið —</option>`;
-  if (topSel) {
-    const opts = teams.map(t => `<option value="${t.team_id || t.id}">${t.team?.name || t.name || t.team_id}</option>`).join("");
-    topSel.innerHTML = placeholder + opts;
-  }
+    let teams = null;
+    try {
+      teams = await listMyTeams();
+      console.log("[team] user", session.user.id);
+      console.log("[team] memberships", teams);
+    } catch (e) {
+      // Do NOT wipe active team on transient failure
+      console.error("Teams load failed (keeping previous team):", e);
+      if (statusLine) statusLine.textContent = "Lið: —";
+      return;
+    }
 
-  let selected = "";
-  if (teams.length === 1) {
-    selected = teams[0].team_id || teams[0].id;
-  } else {
-    const stored = localStorage.getItem("active_team_id") || localStorage.getItem("selectedTeamId") || "";
-    if (stored && teams.some(t => (t.team_id || t.id) === stored)) selected = stored;
-  }
+    // If teams is a valid loaded result but empty => truly no access
+    if (!Array.isArray(teams) || teams.length === 0) {
+      if (topSel) topSel.innerHTML = `<option value="">— Veldu lið —</option>`;
+      setActiveTeam("");
+      if (statusLine) statusLine.textContent = "Lið: No team access";
+      return;
+    }
 
-  if (selected) {
+    // Build dropdown options
+    const placeholder = `<option value="">— Veldu lið —</option>`;
+    if (topSel) {
+      const opts = teams
+        .map(t => {
+          const id = t.team_id || t.id;
+          const name = t.team?.name || t.name || id;
+          return `<option value="${id}">${name}</option>`;
+        })
+        .join("");
+      topSel.innerHTML = placeholder + opts;
+    }
+
+    // Always pick a valid team:
+    // 1) stored if valid
+    // 2) otherwise first team
+    const stored =
+      localStorage.getItem("active_team_id") ||
+      localStorage.getItem("selectedTeamId") ||
+      localStorage.getItem("selected_team_id") ||
+      "";
+
+    let selected = "";
+    if (stored && teams.some(t => (t.team_id || t.id) === stored)) {
+      selected = stored;
+    } else {
+      selected = (teams[0].team_id || teams[0].id) || "";
+    }
+
     if (topSel) topSel.value = selected;
+
     const active = teams.find(t => (t.team_id || t.id) === selected) || {};
     const label = active.team?.name || active.name || active.team_id || selected;
+
     setActiveTeam(selected, label);
-  } else {
-    setActiveTeam("");
-    if (statusLine) statusLine.textContent = "Lið: No team access";
+  } finally {
+    __loadingTeams = false;
   }
 }
 
