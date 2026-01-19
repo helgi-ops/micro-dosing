@@ -729,6 +729,9 @@ api.invitePlayer = invitePlayer;
 // debug (valfrjálst)
 window.__api = api;
 window.__supabase = supabase;
+// DEBUG ONLY (remove later if you want)
+window.supabase = supabase;
+window.api = api;
 
 export function getAuthSession() {
   return getCachedSession();
