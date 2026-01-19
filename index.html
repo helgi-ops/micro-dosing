@@ -72,14 +72,17 @@
     </div>
 
     <script type="module">
-      import { supabase } from "./assets/dataClient.js";
+      import { requireAuth } from "./assets/authGuard.js";
 
-      supabase.auth.getSession().then(({ data }) => {
-        if (data?.session) window.location.href = "./coach.html";
-      });
-
-      supabase.auth.onAuthStateChange((_evt, session) => {
-        if (session) window.location.href = "./coach.html";
+      requireAuth({
+        onAuthed: () => {
+          if (location.pathname.endsWith("/coach.html")) return;
+          localStorage.setItem("auth_redirect_lock_v1", String(Date.now()));
+          location.replace("/coach.html");
+        },
+        onUnAuthed: () => {
+          // stay on login
+        }
       });
     </script>
     <script type="module" src="./assets/login.js"></script>

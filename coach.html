@@ -4625,6 +4625,20 @@
 <script type="module" src="./assets/dataClient.js"></script>
 
 <!-- 3️⃣ Auth + Team selector -->
+<script type="module">
+  import { requireAuth } from "./assets/authGuard.js";
+
+  requireAuth({
+    onAuthed: async () => {
+      document.documentElement.classList.remove("auth-loading");
+    },
+    onUnAuthed: () => {
+      if (location.pathname.endsWith("/index.html") || location.pathname === "/") return;
+      localStorage.setItem("auth_redirect_lock_v1", String(Date.now()));
+      location.replace("/index.html");
+    }
+  });
+</script>
 <script type="module" src="./assets/app-auth.js"></script>
 
 <script type="module" src="./assets/roster-supabase.js"></script>
