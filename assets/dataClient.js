@@ -17,7 +17,7 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   );
 }
 const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
-const LOGIN_URL = baseUrl + "index.html";
+const LOGIN_URL = `${window.location.origin}/coach.html`;
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -52,7 +52,7 @@ export const api = {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: LOGIN_URL
+        emailRedirectTo: `${window.location.origin}/coach.html`
       }
     });
     if (error) {
@@ -65,7 +65,7 @@ export const api = {
   async sendMagicLink(email) {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: LOGIN_URL }
+      options: { emailRedirectTo: `${window.location.origin}/coach.html` }
     });
     if (error) {
       console.error("Supabase signInWithOtp error:", error);
