@@ -731,10 +731,23 @@ export function getAuthSession() {
   return getCachedSession();
 }
 
-// List teams for current user via team_members (coach/admin source of truth)
 export async function listMyTeams() {
-  const session = await api.getSession();
-  const userId = session?.user?.id;
+  // Prefer auth.getUser to avoid cached-session issues
+  let userId = null;
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    userId = userData?.user?.id || null;
+  } catch (e) {
+    console.warn("getUser failed, falling back to getSession:", e);
+  }
+
+  if (!userId) {
+    try {
+      const session = await api.getSession();
+      userId = session?.user?.id || null;
+    } catch (_) {}
+  }
+
   if (!userId) return [];
 
   const { data, error } = await supabase
@@ -742,7 +755,10 @@ export async function listMyTeams() {
     .select("team_id, teams:team_id ( id, name )")
     .eq("user_id", userId);
 
-  if (error) throw error;
+  if (error) {
+    console.error("listMyTeams error:", error);
+    throw error;
+  }
 
   return (data || []).map(r => ({
     team_id: r.team_id,
