@@ -63,6 +63,18 @@ async function loadTeams() {
     const params = new URLSearchParams(location.search);
     const forcedTeam = params.get("team") || params.get("team_id") || "";
 
+    // If team is explicitly forced via query param, lock it immediately
+    if (forcedTeam) {
+      if (topSel) {
+        const name = forcedTeam;
+        topSel.innerHTML = `<option value="${forcedTeam}">${name}</option>`;
+        topSel.value = forcedTeam;
+      }
+      setActiveTeam(forcedTeam, forcedTeam);
+      if (statusLine) statusLine.textContent = `Lið: ${forcedTeam} (forced)`;
+      return;
+    }
+
     let teams;
     try {
       teams = await listMyTeams();

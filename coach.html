@@ -4648,6 +4648,15 @@
   }
   document.documentElement.classList.remove("auth-loading");
 </script>
+<script type="module">
+  // Force team for debugging/unblocking
+  const params = new URLSearchParams(location.search);
+  if (!params.has("team")) {
+    params.set("team", "b0748c6f-0b22-4043-8078-8dfd5f13a053");
+    const newUrl = `${location.pathname}?${params.toString()}`;
+    history.replaceState({}, document.title, newUrl);
+  }
+</script>
 <script type="module" src="./assets/app-auth.js"></script>
 <script type="module" src="./assets/roster-supabase.js"></script>
 
