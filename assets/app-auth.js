@@ -35,9 +35,17 @@ function setActiveTeam(teamId, label) {
 
 async function ensureSessionOrRedirect() {
   await waitForAuthReady?.();
-  const session = getCachedSession?.() || (await supabase.auth.getSession()).data?.session;
-  if (!session) return null; // let outer guards handle redirect
-  return session;
+  let session = getCachedSession?.();
+  if (session) return session;
+  const start = Date.now();
+  while (Date.now() - start < 2000) {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) break;
+    session = data?.session;
+    if (session) return session;
+    await new Promise(r => setTimeout(r, 150));
+  }
+  return null; // let outer guards handle redirect
 }
 
 let __loadingTeams = false;

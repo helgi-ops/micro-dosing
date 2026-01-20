@@ -9,7 +9,18 @@ const LOGIN_URL = `${window.location.origin}/coach.html`;
 export const SUPABASE_URL_PUBLIC = SUPABASE_URL;
 export const SUPABASE_ANON_PUBLIC = SUPABASE_ANON_KEY;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: "coach-dashboard-auth"
+    }
+  }
+);
 window.supabase = supabase;
 
 // Handle magic-link landing early so session is stored and hash cleared
