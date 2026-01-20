@@ -185,12 +185,16 @@ function renderPlayers(players) {
         inviteBtn.textContent = 'Sending...';
 
         try {
+          const { data: sessData } = await supabase.auth.getSession();
+          const accessToken = sessData?.session?.access_token;
+          if (!accessToken) throw new Error("Not signed in");
+
           const resp = await fetch(`${SUPABASE_URL_PUBLIC}/functions/v1/send-invite`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "apikey": SUPABASE_ANON_PUBLIC,
-              "Authorization": `Bearer ${SUPABASE_ANON_PUBLIC}`
+              "Authorization": `Bearer ${accessToken}`
             },
             body: JSON.stringify({
               email,
