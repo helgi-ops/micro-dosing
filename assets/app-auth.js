@@ -60,6 +60,8 @@ async function loadTeams() {
 
     const topSel = document.getElementById("teamSelectTopbar");
     const statusLine = document.getElementById("teamStatusLine");
+    const params = new URLSearchParams(location.search);
+    const forcedTeam = params.get("team") || params.get("team_id") || "";
 
     let teams;
     try {
@@ -76,8 +78,16 @@ async function loadTeams() {
     // Ef þetta er raunverulega tómt => enginn aðgangur
     if (!Array.isArray(teams) || teams.length === 0) {
       if (topSel) topSel.innerHTML = `<option value="">— Veldu lið —</option>`;
-      setActiveTeam("");
-      if (statusLine) statusLine.textContent = "Lið: No team access";
+      if (forcedTeam) {
+        const name = forcedTeam;
+        const opt = `<option value="${forcedTeam}">${name}</option>`;
+        topSel.innerHTML = `<option value="">— Veldu lið —</option>` + opt;
+        setActiveTeam(forcedTeam, name);
+        if (statusLine) statusLine.textContent = `Lið: ${name} (forced)`;
+      } else {
+        setActiveTeam("");
+        if (statusLine) statusLine.textContent = "Lið: No team access";
+      }
       return;
     }
 
@@ -102,7 +112,9 @@ async function loadTeams() {
       "";
 
     let selected = "";
-    if (stored && teams.some(t => (t.team_id || t.id) === stored)) {
+    if (forcedTeam && teams.some(t => (t.team_id || t.id) === forcedTeam)) {
+      selected = forcedTeam;
+    } else if (stored && teams.some(t => (t.team_id || t.id) === stored)) {
       selected = stored;
     } else {
       selected = teams[0].team_id || teams[0].id; // <-- mikilvægasta línan
