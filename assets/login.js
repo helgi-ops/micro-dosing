@@ -5,6 +5,17 @@ const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/
 const LOGIN_URL = baseUrl + "index.html";
 const RESET_URL = baseUrl + "reset-password.html";
 
+function goNext() {
+  const params = new URLSearchParams(location.search);
+  const next = params.get("next");
+  location.replace(next ? decodeURIComponent(next) : "/coach.html");
+}
+
+async function onLoginSuccess() {
+  await new Promise(r => setTimeout(r, 50));
+  goNext();
+}
+
 function setStatus(t) { $("status").textContent = t || ""; }
 function setMsg(t, cls) {
   const el = $("msg");
@@ -79,6 +90,15 @@ async function init() {
   setStatus("Checking session…");
   showResetMode(false);
 
+  // If already signed in, move along
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session) {
+      goNext();
+      return;
+    }
+  } catch (_) {}
+
   // --- Handle Supabase email links (confirm/invite/recovery) ---
   try {
     const url = new URL(window.location.href);
@@ -119,6 +139,7 @@ async function init() {
       const sess = await getSessionCached();
       await goNextOrRole();
       if (sess) await routeUser(sess);
+      await onLoginSuccess();
     } catch (e) {
       setStatus("Error");
       setMsg(e?.message || String(e), "err");
@@ -148,6 +169,7 @@ async function init() {
             : "Account created. Contact an admin to be added to a team.",
           "ok"
         );
+        if (data?.session) await onLoginSuccess();
       } catch (e) {
         setStatus("Error");
         setMsg(e?.message || String(e), "err");
@@ -249,10 +271,10 @@ async function init() {
     if (sess) {
       $("signOutBtn").style.display = "inline-block";
       setStatus("Signed in");
-      // Only route on fresh SIGNED_IN events (skip INITIAL_SESSION/TOKEN_REFRESHED to avoid surprise redirects)
       if (event === "SIGNED_IN") {
         await goNextOrRole();
         await routeUser(sess);
+        await onLoginSuccess();
       }
     } else {
       $("signOutBtn").style.display = "none";

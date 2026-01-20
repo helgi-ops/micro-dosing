@@ -4626,9 +4626,24 @@
 
 <!-- 3️⃣ Auth + Team selector -->
 <script type="module">
-  import { requireSession } from "./assets/authGuard.js";
-  const gate = await requireSession();
-  if (!gate.ok) {
+  import { supabase } from "./assets/dataClient.js";
+
+  async function waitForSession(ms = 2000) {
+    const start = Date.now();
+    let { data } = await supabase.auth.getSession();
+    if (data?.session) return data.session;
+    while (Date.now() - start < ms) {
+      await new Promise(r => setTimeout(r, 150));
+      ({ data } = await supabase.auth.getSession());
+      if (data?.session) return data.session;
+    }
+    return null;
+  }
+
+  const session = await waitForSession();
+  if (!session) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    location.replace(`/index.html?next=${next}`);
     throw new Error("No session");
   }
   document.documentElement.classList.remove("auth-loading");

@@ -126,8 +126,13 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 supabase.auth.onAuthStateChange(async (_event, session) => {
+  const debug = new URLSearchParams(location.search).get("debug") === "1";
   if (!session) {
-    window.location.href = "./index.html";
+    if (!debug) {
+      window.location.href = "./index.html";
+    } else {
+      console.warn("DEBUG: redirect to index blocked (no session)");
+    }
     return;
   }
   await loadTeams();

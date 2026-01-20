@@ -12,6 +12,8 @@ export async function requireSession({ allowDebug = true } = {}) {
   if (!debug) {
     const next = encodeURIComponent(location.pathname + location.search);
     location.replace(`/index.html?next=${next}`);
+  } else {
+    console.warn("DEBUG: redirect to login blocked (no session)");
   }
   return { ok: false, session: null, debug };
 }

@@ -413,7 +413,12 @@ let cmjRecentVal = null;
           if (error) throw error;
         }
         setActionMsg("Player removed. Redirecting…");
-        window.location.href = "./index.html";
+        const debug = new URLSearchParams(location.search).get("debug") === "1";
+        if (!debug) {
+          window.location.href = "./index.html";
+        } else {
+          console.warn("DEBUG: redirect to index blocked");
+        }
       } catch (e) {
         setActionMsg(e?.message || String(e), true);
       }
