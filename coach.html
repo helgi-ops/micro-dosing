@@ -384,7 +384,7 @@
     }
     .coach-topbar.simple {
       display: grid;
-      grid-template-columns: 1fr 1fr auto auto;
+      grid-template-columns: 1fr auto;
       gap: 12px;
       align-items: end;
       margin-bottom: 12px;
@@ -404,15 +404,15 @@
       border: 1px solid rgba(255,255,255,0.12);
       background: #0f1528;
       color: inherit;
+      min-width: 220px;
     }
     .coach-grid {
       display: grid;
-      grid-template-columns: 1.6fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 16px;
       align-items: start;
     }
-    .player-surface h2,
-    #week-preview h2 { margin-top: 0; }
+    .player-surface h2 { margin-top: 0; }
     .badge-ok {
       display: inline-block;
       padding: 4px 8px;
@@ -449,16 +449,8 @@
         <option value="">— Hleð liðum… —</option>
       </select>
     </div>
-    <div class="field">
-      <label for="weekSelect">Week</label>
-      <select id="weekSelect">
-        <option value="">— Choose week —</option>
-      </select>
-    </div>
-    <div>
+    <div style="display:flex; gap:8px; justify-content:flex-end; align-items:end;">
       <button id="btn-assign-week" class="btn primary" type="button">Assign Week</button>
-    </div>
-    <div>
       <button id="btn-edit-week" class="btn ghost" type="button">Edit Week</button>
     </div>
   </div>
@@ -514,12 +506,12 @@
     </section>
       </main>
       <aside id="week-preview" class="panel no-print">
-        <h2>Week Preview</h2>
-        <div id="week-preview-content" class="muted">Select a week to see details.</div>
+        <h2>Week Builder</h2>
+        <div class="muted">Week Builder is below.</div>
       </aside>
     </div>
 
-    <section class="panel week-builder-panel no-print app-panel is-hidden" id="panel-weekBuilder">
+    <section class="panel week-builder-panel no-print app-panel" id="panel-weekBuilder">
       <div class="panel-head">
         <div>
           <p class="eyebrow">Week Builder</p>
@@ -5087,7 +5079,6 @@
     editBtn.addEventListener("click", () => {
       const panel = document.getElementById("panel-weekBuilder");
       if (panel) {
-        panel.classList.toggle("is-hidden");
         panel.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     });
