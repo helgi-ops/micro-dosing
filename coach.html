@@ -505,10 +505,6 @@
       </div>
     </section>
       </main>
-      <aside id="week-preview" class="panel no-print">
-        <h2>Week Builder</h2>
-        <div class="muted">Week Builder is below.</div>
-      </aside>
     </div>
 
     <section class="panel week-builder-panel no-print app-panel" id="panel-weekBuilder">
@@ -526,19 +522,44 @@
 
       <div class="builder-meta">
         <div class="meta-block">
-          <span class="label">Vika</span>
-          <strong>Week 32</strong>
-          <div class="sub">05.08 – 11.08</div>
+          <span class="label">Plan Inputs</span>
+          <div style="display:grid;gap:8px;">
+            <label style="display:grid;gap:4px;">
+              <span class="muted" style="font-size:12px;">Week label</span>
+              <input id="weekStartInput" type="text" placeholder="Þessi vika" />
+            </label>
+            <label style="display:grid;gap:4px;">
+              <span class="muted" style="font-size:12px;">Weekly load</span>
+              <select id="loadSelect">
+                <option value="low">Low</option>
+                <option value="moderate" selected>Moderate</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+            <label style="display:grid;gap:4px;">
+              <span class="muted" style="font-size:12px;">Last game exposure</span>
+              <select id="exposureSelect">
+                <option value="high">High (played a lot)</option>
+                <option value="moderate">Moderate</option>
+                <option value="low" selected>Low/None</option>
+              </select>
+            </label>
+          </div>
         </div>
         <div class="meta-block">
-          <span class="label">Útgáfa</span>
-          <strong>v1 (draft)</strong>
-          <div class="sub">Breytingar vistaðar: –</div>
-        </div>
-        <div class="meta-block">
-          <span class="label">Reglur</span>
-          <strong>Micro-dose rules</strong>
-          <div class="sub">Applies to: non-published weeks</div>
+          <span class="label">Residuals (days since)</span>
+          <div class="microdose-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;">
+            <label style="font-size:12px;">Strength
+              <input id="residual-strength" type="number" min="0" max="21" step="1" placeholder="t.d. 8" />
+            </label>
+            <label style="font-size:12px;">Power/Speed
+              <input id="residual-power" type="number" min="0" max="21" step="1" placeholder="t.d. 6" />
+            </label>
+            <label style="font-size:12px;">Plyo
+              <input id="residual-plyo" type="number" min="0" max="21" step="1" placeholder="valfrjálst" />
+            </label>
+          </div>
+          <div class="muted" id="residualsStatus" style="margin-top:6px;"></div>
         </div>
       </div>
 
@@ -4777,6 +4798,75 @@
   }
 
   initCoach().catch(err => console.error("initCoach error", err));
+</script>
+<script type="module">
+  import { supabase } from "./assets/dataClient.js";
+
+  const teamFromUrl = () => new URLSearchParams(location.search).get("team") || "";
+  const keyForTeam = (teamId) => `planInputs_${teamId || "default"}`;
+
+  const fields = {
+    weekLabel: document.getElementById("weekStartInput"),
+    weeklyLoad: document.getElementById("loadSelect"),
+    exposure: document.getElementById("exposureSelect"),
+    resStrength: document.getElementById("residual-strength"),
+    resPower: document.getElementById("residual-power"),
+    resPlyo: document.getElementById("residual-plyo"),
+    residualsStatus: document.getElementById("residualsStatus")
+  };
+
+  function readState(teamId) {
+    try {
+      const raw = localStorage.getItem(keyForTeam(teamId));
+      return raw ? JSON.parse(raw) : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function writeState(teamId, state) {
+    try { localStorage.setItem(keyForTeam(teamId), JSON.stringify(state)); } catch (_) {}
+  }
+
+  function applyState(state) {
+    if (fields.weekLabel && state.week_label) fields.weekLabel.value = state.week_label;
+    if (fields.weeklyLoad && state.weekly_load) fields.weeklyLoad.value = state.weekly_load;
+    if (fields.exposure && state.last_game_exposure) fields.exposure.value = state.last_game_exposure;
+    if (fields.resStrength && state.res_strength != null) fields.resStrength.value = state.res_strength;
+    if (fields.resPower && state.res_power != null) fields.resPower.value = state.res_power;
+    if (fields.resPlyo && state.res_plyo != null) fields.resPlyo.value = state.res_plyo;
+  }
+
+  function collectState() {
+    return {
+      week_label: fields.weekLabel?.value || "",
+      weekly_load: fields.weeklyLoad?.value || "",
+      last_game_exposure: fields.exposure?.value || "",
+      res_strength: fields.resStrength?.value || "",
+      res_power: fields.resPower?.value || "",
+      res_plyo: fields.resPlyo?.value || ""
+    };
+  }
+
+  function bindInputs(teamId) {
+    const handler = () => {
+      const state = collectState();
+      writeState(teamId, state);
+      if (fields.residualsStatus) fields.residualsStatus.textContent = "Vistað per lið";
+    };
+    [fields.weekLabel, fields.weeklyLoad, fields.exposure, fields.resStrength, fields.resPower, fields.resPlyo].forEach(el => {
+      if (el) el.addEventListener("input", handler);
+    });
+  }
+
+  async function initPlanInputs() {
+    const teamId = teamFromUrl();
+    const state = readState(teamId);
+    applyState(state);
+    bindInputs(teamId);
+  }
+
+  initPlanInputs().catch(err => console.error("plan inputs init error", err));
 </script>
 <script type="module" src="./assets/app-auth.js"></script>
 <script type="module" src="./assets/roster-supabase.js"></script>
