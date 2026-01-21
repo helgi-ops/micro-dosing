@@ -432,14 +432,26 @@
       font-size: 0.9rem;
     }
     .menu.is-hidden { display: none; }
+    #roster-column,
     .roster-column {
-      max-width: 960px;
-      margin: 0 auto;
-      display: grid;
+      width: 100%;
+      max-width: 100%;
+      display: flex;
+      flex-direction: column;
       gap: 12px;
     }
+    #roster-column .card,
     .roster-column .card {
       width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    #roster-summary-card,
+    .roster-summary {
+      width: 100% !important;
+      max-width: 100% !important;
+      display: block !important;
+      align-self: stretch !important;
     }
   </style>
 </head>
@@ -493,8 +505,8 @@
           <p class="muted">Veldu lið og sjáðu leikmenn eða bættu við nýjum.</p>
         </div>
       </div>
-      <div id="rosterPanelBody" class="roster-column">
-        <div class="card" id="rosterAuthCard">
+      <div id="roster-column" class="roster-column">
+        <div class="card roster-summary" id="roster-summary-card">
           <!-- Auth status -->
           <div id="authStatus" class="auth-status" style="margin:10px 0; padding:10px; border:1px solid #e5e7eb; border-radius:10px;">
             <div style="display:flex; gap:10px; align-items:center; justify-content:space-between;">
