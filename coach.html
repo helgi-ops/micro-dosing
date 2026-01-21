@@ -4707,13 +4707,33 @@
   document.documentElement.classList.remove("auth-loading");
 </script>
 <script type="module">
-  // Force team for debugging/unblocking
-  const params = new URLSearchParams(location.search);
-  if (!params.has("team")) {
-    params.set("team", "b0748c6f-0b22-4043-8078-8dfd5f13a053");
-    const newUrl = `${location.pathname}?${params.toString()}`;
-    history.replaceState({}, document.title, newUrl);
+  import { supabase } from "./assets/dataClient.js";
+
+  async function requireSession() {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    if (!data?.session) throw new Error("No active session. Please sign in again.");
+    return data.session;
   }
+
+  async function getForcedTeamId() {
+    const url = new URL(window.location.href);
+    const teamId = url.searchParams.get("team");
+    if (!teamId) throw new Error("Missing ?team=<uuid> in URL");
+    return teamId;
+  }
+
+  async function initCoach() {
+    const session = await requireSession();
+    const teamId = await getForcedTeamId();
+
+    window.weekBuilderState = window.weekBuilderState || {};
+    window.weekBuilderState.teamId = teamId;
+
+    console.log("Coach init ok", { user: session.user.id, teamId });
+  }
+
+  initCoach().catch(err => console.error("initCoach error", err));
 </script>
 <script type="module" src="./assets/app-auth.js"></script>
 <script type="module" src="./assets/roster-supabase.js"></script>
