@@ -375,6 +375,64 @@
     }
   </style>
   <link rel="stylesheet" href="./assets/ui.css">
+  <style>
+    .is-hidden { display: none !important; }
+    .coach-layout {
+      display: grid;
+      gap: 16px;
+      align-items: start;
+    }
+    .coach-topbar.simple {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto auto;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    .coach-topbar.simple .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .coach-topbar.simple label {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    .coach-topbar.simple select {
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: #0f1528;
+      color: inherit;
+    }
+    .coach-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .player-surface h2,
+    #week-preview h2 { margin-top: 0; }
+    .badge-ok {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(79,209,197,0.15);
+      color: #8ff2e5;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .badge-warn {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(255,193,7,0.15);
+      color: #ffd166;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .menu.is-hidden { display: none; }
+  </style>
 </head>
 <body>
 
@@ -384,39 +442,24 @@
 
   <div class="actions" style="display:none;"></div>
 
-  <div class="coach-topbar no-print">
-    <div class="coach-topbar__left">
-      <div class="brand">
-        <span class="brand-mark"></span>
-        <span class="brand-text">Coach Dashboard</span>
-      </div>
-      <div class="field">
-        <label for="teamSelectTopbar">Lið / hópur</label>
-        <select id="teamSelectTopbar" aria-label="Veldu lið">
-          <option value="">— Hleð liðum… —</option>
-        </select>
-      </div>
+  <div class="coach-topbar simple no-print">
+    <div class="field">
+      <label for="teamSelectTopbar">Team</label>
+      <select id="teamSelectTopbar" aria-label="Select team">
+        <option value="">— Hleð liðum… —</option>
+      </select>
     </div>
-
-    <div class="coach-topbar__mid">
-      <div class="field week-field">
-        <label>Vika</label>
-        <div class="week-meta">
-          <button type="button" class="ghost-btn" aria-label="Fyrri vika">‹</button>
-          <div>
-            <div class="week-title">Week 32</div>
-            <div class="week-range">05.08 – 11.08</div>
-          </div>
-          <button type="button" class="ghost-btn" aria-label="Næsta vika">›</button>
-        </div>
-      </div>
-      <div class="status-chip draft" aria-live="polite">Draft</div>
+    <div class="field">
+      <label for="weekSelect">Week</label>
+      <select id="weekSelect">
+        <option value="">— Choose week —</option>
+      </select>
     </div>
-
-    <div class="coach-topbar__actions">
-      <button type="button" class="btn primary">Publish viku</button>
-      <button type="button" class="btn ghost">Export</button>
-      <button type="button" class="btn ghost">Settings</button>
+    <div>
+      <button id="btn-assign-week" class="btn primary" type="button">Assign Week</button>
+    </div>
+    <div>
+      <button id="btn-edit-week" class="btn ghost" type="button">Edit Week</button>
     </div>
   </div>
 
@@ -439,6 +482,8 @@
     <div class="app">
     <div id="supabaseHooks"></div>
 
+    <div class="coach-grid">
+      <main class="player-surface" id="player-surface">
     <section class="panel roster-panel no-print app-panel" id="panel-roster">
       <div class="panel-head">
         <div>
@@ -467,8 +512,14 @@
         </div>
       </div>
     </section>
+      </main>
+      <aside id="week-preview" class="panel no-print">
+        <h2>Week Preview</h2>
+        <div id="week-preview-content" class="muted">Select a week to see details.</div>
+      </aside>
+    </div>
 
-    <section class="panel week-builder-panel no-print app-panel" id="panel-weekBuilder">
+    <section class="panel week-builder-panel no-print app-panel is-hidden" id="panel-weekBuilder">
       <div class="panel-head">
         <div>
           <p class="eyebrow">Week Builder</p>
@@ -5020,6 +5071,27 @@
     }
   });
 })();
+</script>
+<script type="module">
+  const assignBtn = document.getElementById("btn-assign-week");
+  const editBtn = document.getElementById("btn-edit-week");
+
+  if (assignBtn) {
+    assignBtn.addEventListener("click", () => {
+      const opener = document.getElementById("assign-week-open");
+      if (opener) opener.click();
+    });
+  }
+
+  if (editBtn) {
+    editBtn.addEventListener("click", () => {
+      const panel = document.getElementById("panel-weekBuilder");
+      if (panel) {
+        panel.classList.toggle("is-hidden");
+        panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }
 </script>
 
 <!-- 4️⃣ Microdose kerfið þitt -->
