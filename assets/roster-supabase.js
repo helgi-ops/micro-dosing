@@ -274,14 +274,19 @@ async function loadPlayers(teamId) {
 
   if (!isAuthReady()) {
     status.textContent = "Athuga innskráningu…";
-    return;
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session) {
+        window.__cachedSession = data.session;
+      }
+    } catch (_) {}
   }
 
   // þarf login (RLS)
   const signedIn = isSignedInSync();
   if (!signedIn) {
     status.textContent = "Skráðu þig inn til að sjá lið og leikmenn. (session=null eða error)";
-    renderPlayers([]);
+    // Do not clear existing list; keep team hint
     updateAddState(signedIn, teamId);
     return;
   }
