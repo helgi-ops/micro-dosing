@@ -18,6 +18,19 @@ const IDS = {
 function byId(id) { return document.getElementById(id); }
 
 function getTeamId() {
+  // Prefer an explicit team in the URL (coach.html?team=<uuid>)
+  const urlTeam = new URLSearchParams(location.search).get("team");
+  if (urlTeam && /^[0-9a-fA-F-]{36}$/.test(urlTeam)) {
+    // keep all common caches in sync so other modules see the same team
+    window.__selectedTeamId = urlTeam;
+    try {
+      localStorage.setItem("active_team_id", urlTeam);
+      localStorage.setItem("selectedTeamId", urlTeam);
+      localStorage.setItem("selected_team_id", urlTeam);
+    } catch {}
+    return urlTeam;
+  }
+
   return (
     window.__selectedTeamId ||
     localStorage.getItem("active_team_id") ||

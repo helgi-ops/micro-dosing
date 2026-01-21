@@ -1,7 +1,9 @@
 import { supabase } from "./dataClient.js";
 
 function getToken() {
-  return (new URLSearchParams(location.search).get("t") || "").trim();
+  const qs = new URLSearchParams(location.search);
+  // Support both ?t= (legacy) and ?token= (more explicit)
+  return (qs.get("t") || qs.get("token") || "").trim();
 }
 
 async function loadPlayerByToken(token) {
@@ -62,7 +64,11 @@ function renderWeek(assignment) {
 (async () => {
   try {
     const token = getToken();
-    if (!token) throw new Error("Missing token");
+    if (!token) {
+      // No token in URL. This page may be used with a normal signed-in session.
+      // In that case, do nothing here and let the session-based player.js handle rendering.
+      return;
+    }
 
     const player = await loadPlayerByToken(token);
     const assignment = await loadLatestWeekAssignment(player.id);
