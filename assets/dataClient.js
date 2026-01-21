@@ -727,6 +727,65 @@ window.__supabase = supabase;
 window.supabase = supabase;
 window.api = api;
 
+export function makeRandomToken(len = 32) {
+  // URL-safe token
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let s = "";
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  for (let i = 0; i < len; i++) s += chars[arr[i] % chars.length];
+  return s;
+}
+
+export async function ensurePlayerToken(playerId, expiresDays = 90) {
+  // 1) fetch current token
+  const cur = await supabase
+    .from("players")
+    .select("id, access_token, token_expires_at")
+    .eq("id", playerId)
+    .maybeSingle();
+
+  if (cur.error) throw cur.error;
+  if (!cur.data) throw new Error("Player not found");
+
+  if (cur.data.access_token) return cur.data.access_token;
+
+  // 2) set new token
+  const token = makeRandomToken(40);
+  const token_expires_at =
+    expiresDays ? new Date(Date.now() + expiresDays * 86400000).toISOString() : null;
+
+  const up = await supabase
+    .from("players")
+    .update({ access_token: token, token_expires_at })
+    .eq("id", playerId)
+    .select("access_token")
+    .maybeSingle();
+
+  if (up.error) throw up.error;
+  return up.data.access_token;
+}
+
+export function buildPlayerLink(token) {
+  const base = window.location.origin;
+  return `${base}/player.html?t=${encodeURIComponent(token)}`;
+}
+
+export async function rotatePlayerToken(playerId, expiresDays = 90) {
+  const token = makeRandomToken(40);
+  const token_expires_at = expiresDays ? new Date(Date.now() + expiresDays * 86400000).toISOString() : null;
+
+  const up = await supabase
+    .from("players")
+    .update({ access_token: token, token_expires_at })
+    .eq("id", playerId)
+    .select("access_token")
+    .maybeSingle();
+
+  if (up.error) throw up.error;
+  return buildPlayerLink(up.data.access_token);
+}
+
 export function getAuthSession() {
   return getCachedSession();
 }

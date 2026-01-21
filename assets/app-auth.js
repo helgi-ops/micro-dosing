@@ -56,7 +56,11 @@ async function loadTeams() {
 
   try {
     const session = await ensureSessionOrRedirect();
-    if (!session) return;
+    if (!session) {
+      const statusLine = document.getElementById("teamStatusLine");
+      if (statusLine) statusLine.textContent = "Lið: — (no session)";
+      return;
+    }
 
     const topSel = document.getElementById("teamSelectTopbar");
     const statusLine = document.getElementById("teamStatusLine");

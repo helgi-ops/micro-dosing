@@ -1,5 +1,5 @@
 // assets/roster-supabase.js
-import { api, supabase, getCachedSession, isAuthReady, SUPABASE_URL_PUBLIC, SUPABASE_ANON_PUBLIC } from "./dataClient.js";
+import { api, supabase, getCachedSession, isAuthReady, SUPABASE_URL_PUBLIC, SUPABASE_ANON_PUBLIC, ensurePlayerToken, buildPlayerLink } from "./dataClient.js";
 
 // DEBUG proof-of-life
 window.__ROSTER_SUPABASE_LOADED_AT = new Date().toISOString();
@@ -158,6 +158,29 @@ function renderPlayers(players) {
       delBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         await deletePlayerSafe(currentTeamId || getTeamId(), p.id);
+      });
+      // Copy player link button
+      const copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'ghost-btn small-btn roster-copy';
+      copyBtn.dataset.playerId = p.id;
+      copyBtn.textContent = 'Copy link';
+      actions.appendChild(copyBtn);
+      copyBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          copyBtn.disabled = true;
+          const token = await ensurePlayerToken(p.id, 90);
+          const url = buildPlayerLink(token);
+          await navigator.clipboard.writeText(url);
+          const old = copyBtn.textContent;
+          copyBtn.textContent = "Copied!";
+          setTimeout(() => { copyBtn.textContent = old; }, 1200);
+        } catch (err) {
+          alert(err?.message || String(err));
+        } finally {
+          copyBtn.disabled = false;
+        }
       });
     }
 

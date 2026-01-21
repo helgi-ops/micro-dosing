@@ -26,13 +26,7 @@
     </style>
   </head>
   <body>
-    <script type="module">
-      import { requireSession } from "./assets/authGuard.js";
-      const gate = await requireSession();
-      if (!gate.ok) {
-        throw new Error("No session");
-      }
-    </script>
+    <script type="module" src="./assets/player-token.js"></script>
     <div class="wrap">
       <div class="row" style="justify-content:space-between;">
         <div class="row">
@@ -64,6 +58,13 @@
         <ul class="list" id="weeksList"></ul>
         <div class="muted" id="weeksEmpty" style="display:none;">No assigned week found.</div>
       </div>
+
+      <div class="spacer"></div>
+
+      <section id="weekPreview">
+        <h2>Vikan þín</h2>
+        <div id="weekBox"></div>
+      </section>
 
       <div class="spacer"></div>
 
