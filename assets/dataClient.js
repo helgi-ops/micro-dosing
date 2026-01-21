@@ -727,7 +727,7 @@ window.__supabase = supabase;
 window.supabase = supabase;
 window.api = api;
 
-export function makeRandomToken(len = 32) {
+export function makeRandomToken(len = 40) {
   // URL-safe token
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let s = "";
@@ -737,7 +737,7 @@ export function makeRandomToken(len = 32) {
   return s;
 }
 
-export async function ensurePlayerToken(playerId, expiresDays = 90) {
+export async function ensurePlayerToken(playerId, expiresDays = 120) {
   // 1) fetch current token
   const cur = await supabase
     .from("players")

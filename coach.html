@@ -4615,6 +4615,15 @@
   }
 </script>
 
+<section id="pilotPanel" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin:12px 20px;">
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+    <label for="weekSelect">Choose week:</label>
+    <select id="weekSelect"></select>
+    <button id="refreshPilot" type="button">Refresh</button>
+  </div>
+  <div id="playersList" style="margin-top:12px;"></div>
+</section>
+
 <!-- 1️⃣ Supabase config (VERÐUR að vera á undan JS) -->
 <script>
   window.__SUPABASE_URL__ = "https://tbtkxttiwbdmugjivmvb.supabase.co";
@@ -4659,6 +4668,99 @@
 </script>
 <script type="module" src="./assets/app-auth.js"></script>
 <script type="module" src="./assets/roster-supabase.js"></script>
+<script type="module">
+  import { supabase, ensurePlayerToken, buildPlayerLink } from "./assets/dataClient.js";
+
+  const PILOT_TEAM_ID = "b0748c6f-0b22-4043-8078-8dfd5f13a053";
+
+  async function loadPlayersPilot() {
+    const res = await supabase
+      .from("players")
+      .select("id, first_name, last_name")
+      .eq("team_id", PILOT_TEAM_ID)
+      .order("last_name", { ascending: true });
+    if (res.error) throw res.error;
+    return res.data || [];
+  }
+
+  async function loadWeeksPilot() {
+    const res = await supabase
+      .from("weeks")
+      .select("id, week_number, title, start_date, end_date")
+      .eq("team_id", PILOT_TEAM_ID)
+      .order("week_number", { ascending: false });
+    if (res.error) throw res.error;
+    return res.data || [];
+  }
+
+  async function assignWeekToPlayer(playerId, weekId) {
+    const res = await supabase.from("week_assignments").insert({
+      player_id: playerId,
+      week_id: weekId,
+      status: "assigned",
+    });
+    if (res.error) throw res.error;
+  }
+
+  async function renderPilot() {
+    const weeks = await loadWeeksPilot();
+    const players = await loadPlayersPilot();
+
+    const weekSel = document.getElementById("weekSelect");
+    if (weekSel) {
+      weekSel.innerHTML = weeks.map(w => {
+        const label = `Week ${w.week_number ?? ""} — ${w.title ?? ""}`.trim();
+        return `<option value="${w.id}">${label}</option>`;
+      }).join("");
+      if (!weekSel.value && weeks[0]) weekSel.value = weeks[0].id;
+    }
+
+    const list = document.getElementById("playersList");
+    if (list) {
+      list.innerHTML = players.map(p => `
+        <div style="display:flex;gap:10px;align-items:center;margin:8px 0;">
+          <div style="min-width:220px;">${p.first_name ?? ""} ${p.last_name ?? ""}</div>
+          <button data-act="assign" data-player="${p.id}">Assign selected week</button>
+          <button data-act="copyLink" data-player="${p.id}">Copy player link</button>
+        </div>
+      `).join("");
+    }
+  }
+
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    const act = btn.getAttribute("data-act");
+    const playerId = btn.getAttribute("data-player");
+    const weekId = document.getElementById("weekSelect")?.value;
+
+    try {
+      btn.disabled = true;
+      if (act === "assign") {
+        if (!weekId) throw new Error("Pick a week first");
+        await assignWeekToPlayer(playerId, weekId);
+        const old = btn.textContent;
+        btn.textContent = "Assigned!";
+        setTimeout(() => (btn.textContent = old || "Assign selected week"), 900);
+      }
+      if (act === "copyLink") {
+        const token = await ensurePlayerToken(playerId, 120);
+        const url = buildPlayerLink(token);
+        await navigator.clipboard.writeText(url);
+        const old = btn.textContent;
+        btn.textContent = "Copied!";
+        setTimeout(() => (btn.textContent = old || "Copy player link"), 900);
+      }
+    } catch (err) {
+      alert(err?.message || String(err));
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById("refreshPilot")?.addEventListener("click", () => renderPilot());
+  renderPilot().catch(err => console.error("pilot panel error", err));
+</script>
 
 <!-- 4️⃣ Microdose kerfið þitt -->
   <script type="module">
