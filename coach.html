@@ -432,6 +432,15 @@
       font-size: 0.9rem;
     }
     .menu.is-hidden { display: none; }
+    .roster-column {
+      max-width: 960px;
+      margin: 0 auto;
+      display: grid;
+      gap: 12px;
+    }
+    .roster-column .card {
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -484,7 +493,7 @@
           <p class="muted">Veldu lið og sjáðu leikmenn eða bættu við nýjum.</p>
         </div>
       </div>
-      <div id="rosterPanelBody">
+      <div id="rosterPanelBody" class="roster-column">
         <div class="card" id="rosterAuthCard">
           <!-- Auth status -->
           <div id="authStatus" class="auth-status" style="margin:10px 0; padding:10px; border:1px solid #e5e7eb; border-radius:10px;">
@@ -4867,6 +4876,34 @@
   }
 
   initPlanInputs().catch(err => console.error("plan inputs init error", err));
+</script>
+<script type="module">
+  const editWeekBtn = document.getElementById("btn-edit-week");
+  if (editWeekBtn) {
+    editWeekBtn.addEventListener("click", () => {
+      const weekBuilderNav =
+        document.getElementById("nav-week-builder") ||
+        document.querySelector('[data-panel="panel-weekBuilder"]') ||
+        document.querySelector('[data-view="week-builder"]');
+
+      if (weekBuilderNav) {
+        weekBuilderNav.click();
+      }
+
+      setTimeout(() => {
+        const weekBuilderSection =
+          document.getElementById("week-builder") ||
+          document.querySelector('[data-section="week-builder"]') ||
+          document.getElementById("panel-weekBuilder");
+
+        if (weekBuilderSection) {
+          weekBuilderSection.scrollIntoView({ behavior: "smooth", block: "start" });
+          weekBuilderSection.setAttribute("tabindex", "-1");
+          weekBuilderSection.focus({ preventScroll: true });
+        }
+      }, 150);
+    });
+  }
 </script>
 <script type="module" src="./assets/app-auth.js"></script>
 <script type="module" src="./assets/roster-supabase.js"></script>
