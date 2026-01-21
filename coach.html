@@ -489,6 +489,16 @@
     </div>
   </div>
 
+  <div id="coach-flow">
+    <div id="slot-roster-summary"></div>
+    <div id="slot-week-builder"></div>
+    <div id="slot-week-frame"></div>
+    <div id="slot-choose-week"></div>
+    <div id="slot-monitoring"></div>
+    <div id="slot-reports"></div>
+    <div id="slot-program-builder"></div>
+  </div>
+
   <div class="app-shell">
     <nav class="coach-sidebar no-print" aria-label="Coach navigation" data-nav="coach">
       <div class="sidebar-header">
@@ -508,7 +518,7 @@
     <div class="app">
     <div id="supabaseHooks"></div>
 
-    <section class="panel week-builder-panel no-print app-panel" id="panel-weekBuilder">
+    <section class="panel week-builder-panel no-print app-panel" id="panel-weekBuilder" data-section="week-builder">
       <div class="panel-head">
         <div>
           <p class="eyebrow">Week Builder</p>
@@ -521,7 +531,7 @@
         </div>
       </div>
 
-      <div class="builder-meta">
+      <div class="builder-meta" id="week-frame-card" data-section="week-frame">
         <div class="meta-block">
           <span class="label">Plan Inputs</span>
           <div style="display:grid;gap:8px;">
@@ -757,7 +767,7 @@
 
     <div id="choose-week-slot"></div>
 
-    <section class="panel monitoring-panel no-print app-panel" id="panel-monitoring">
+  <section class="panel monitoring-panel no-print app-panel" id="panel-monitoring" data-section="monitoring">
       <div class="panel-head">
         <div>
           <p class="eyebrow">Monitoring</p>
@@ -796,9 +806,11 @@
           </div>
         </div>
       </div>
-    </section>
+  </section>
 
-    <section class="panel roster-panel no-print app-panel" id="panel-roster">
+  <section id="choose-week-slot"></section>
+
+  <section class="panel roster-panel no-print app-panel" id="panel-roster" data-section="roster">
       <div class="panel-head">
         <div>
           <p class="eyebrow">Roster</p>
@@ -932,7 +944,7 @@
       </aside>
     </div>
 
-    <section class="panel reports-panel no-print app-panel" id="panel-reports">
+    <section class="panel reports-panel no-print app-panel" id="panel-reports" data-section="reports">
       <div class="panel-head">
         <div>
           <p class="eyebrow">Reports</p>
@@ -1288,7 +1300,16 @@
     </main>
   </section>
 
-  <section class="program-block no-print">
+  <section id="choose-week-card" class="panel no-print app-panel" data-role="choose-week" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin:12px 20px;">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <label for="weekSelect">Choose week:</label>
+      <select id="weekSelect"></select>
+      <button id="refreshPilot" type="button">Refresh</button>
+    </div>
+    <div id="playersList" style="margin-top:12px;"></div>
+  </section>
+
+  <section class="program-block no-print" id="program-builder-container" data-section="program-builder">
     <h2>Build your own program</h2>
     <div class="two-col">
       <label>
@@ -4710,16 +4731,6 @@
   }
 </script>
 
-<div id="choose-week-slot"></div>
-
-<section id="choose-week-card" class="panel no-print app-panel" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin:12px 20px;">
-  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-    <label for="weekSelect">Choose week:</label>
-    <select id="weekSelect"></select>
-    <button id="refreshPilot" type="button">Refresh</button>
-  </div>
-  <div id="playersList" style="margin-top:12px;"></div>
-  </section>
 
   <!-- Assign Week Modal -->
   <div id="assign-week-modal" class="modal hidden" aria-hidden="true">
@@ -4900,6 +4911,32 @@
   }
 
   initPlanInputs().catch(err => console.error("plan inputs init error", err));
+</script>
+<script type="module">
+  function applyCoachFlowOrder() {
+    const map = [
+      ["slot-roster-summary", "#panel-roster"],
+      ["slot-week-builder", "#panel-weekBuilder"],
+      ["slot-week-frame", "#week-frame-card"],
+      ["slot-choose-week", "#choose-week-card, .choose-week-card, [data-role=\"choose-week\"]"],
+      ["slot-monitoring", "#panel-monitoring"],
+      ["slot-reports", "#panel-reports"],
+      ["slot-program-builder", "#program-builder-container, [data-section=\"program-builder\"]"],
+    ];
+    for (const [slotId, selector] of map) {
+      const slot = document.getElementById(slotId);
+      if (!slot) continue;
+      const node = document.querySelector(selector);
+      if (!node) continue;
+      if (node.parentNode !== slot) slot.appendChild(node);
+    }
+  }
+  applyCoachFlowOrder();
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("[data-view], .nav-item")) {
+      setTimeout(applyCoachFlowOrder, 150);
+    }
+  });
 </script>
 <script type="module">
   function placeChooseWeekCard() {
