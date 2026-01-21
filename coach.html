@@ -453,6 +453,9 @@
       display: block !important;
       align-self: stretch !important;
     }
+    #panel-roster {
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -468,6 +471,12 @@
       <label for="teamSelectTopbar">Team</label>
       <select id="teamSelectTopbar" aria-label="Select team">
         <option value="">— Hleð liðum… —</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="weekSelect">Week</label>
+      <select id="weekSelect">
+        <option value="">— Choose week —</option>
       </select>
     </div>
     <div style="display:flex; gap:8px; justify-content:flex-end; align-items:end;">
@@ -4702,8 +4711,6 @@
 
 <section id="pilotPanel" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin:12px 20px;">
   <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-    <label for="weekSelect">Choose week:</label>
-    <select id="weekSelect"></select>
     <button id="refreshPilot" type="button">Refresh</button>
   </div>
   <div id="playersList" style="margin-top:12px;"></div>
