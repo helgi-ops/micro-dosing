@@ -446,6 +446,10 @@
       max-width: 100%;
       box-sizing: border-box;
     }
+    .roster-panel .card {
+      width: 100%;
+      max-width: 100%;
+    }
     #roster-summary-card,
     .roster-summary {
       width: 100% !important;
@@ -455,6 +459,12 @@
     }
     #panel-roster {
       width: 100%;
+    }
+    #choose-week-card {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      margin: 16px 0;
     }
   </style>
 </head>
@@ -471,12 +481,6 @@
       <label for="teamSelectTopbar">Team</label>
       <select id="teamSelectTopbar" aria-label="Select team">
         <option value="">— Hleð liðum… —</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="weekSelect">Week</label>
-      <select id="weekSelect">
-        <option value="">— Choose week —</option>
       </select>
     </div>
     <div style="display:flex; gap:8px; justify-content:flex-end; align-items:end;">
@@ -503,39 +507,6 @@
 
     <div class="app">
     <div id="supabaseHooks"></div>
-
-    <div class="coach-grid">
-      <main class="player-surface" id="player-surface">
-    <section class="panel roster-panel no-print app-panel" id="panel-roster">
-      <div class="panel-head">
-        <div>
-          <p class="eyebrow">Roster</p>
-          <h2>Liðsheild</h2>
-          <p class="muted">Veldu lið og sjáðu leikmenn eða bættu við nýjum.</p>
-        </div>
-      </div>
-      <div id="roster-column" class="roster-column">
-        <div class="card roster-summary" id="roster-summary-card">
-          <!-- Auth status -->
-          <div id="authStatus" class="auth-status" style="margin:10px 0; padding:10px; border:1px solid #e5e7eb; border-radius:10px;">
-            <div style="display:flex; gap:10px; align-items:center; justify-content:space-between;">
-              <div>
-                <div style="font-weight:700;">Aðgangur</div>
-                <div id="authStatusLine" style="opacity:.85;">Athuga innskráningu…</div>
-                <div id="teamStatusLine" style="opacity:.85; margin-top:4px;">Lið: —</div>
-              </div>
-              <button id="signOutBtn" type="button" style="display:none;">Skrá út</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card" id="rosterAddPlayerCard">
-          <div id="rosterHooks"></div>
-        </div>
-      </div>
-    </section>
-      </main>
-    </div>
 
     <section class="panel week-builder-panel no-print app-panel" id="panel-weekBuilder">
       <div class="panel-head">
@@ -784,6 +755,8 @@
       </div>
     </section>
 
+    <div id="choose-week-slot"></div>
+
     <section class="panel monitoring-panel no-print app-panel" id="panel-monitoring">
       <div class="panel-head">
         <div>
@@ -821,6 +794,34 @@
           <div class="muted" style="grid-column: 1 / -1;">
             Engin gögn enn — veldu lið og bættu við leikmönnum.
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel roster-panel no-print app-panel" id="panel-roster">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Roster</p>
+          <h2>Liðsheild</h2>
+          <p class="muted">Veldu lið og sjáðu leikmenn eða bættu við nýjum.</p>
+        </div>
+      </div>
+      <div id="roster-column" class="roster-column">
+        <div class="card roster-summary" id="roster-summary-card">
+          <div id="authStatus" class="auth-status" style="margin:10px 0; padding:10px; border:1px solid #e5e7eb; border-radius:10px;">
+            <div style="display:flex; gap:10px; align-items:center; justify-content:space-between;">
+              <div>
+                <div style="font-weight:700;">Aðgangur</div>
+                <div id="authStatusLine" style="opacity:.85;">Athuga innskráningu…</div>
+                <div id="teamStatusLine" style="opacity:.85; margin-top:4px;">Lið: —</div>
+              </div>
+              <button id="signOutBtn" type="button" style="display:none;">Skrá út</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="rosterAddPlayerCard">
+          <div id="rosterHooks"></div>
         </div>
       </div>
     </section>
@@ -4709,8 +4710,12 @@
   }
 </script>
 
-<section id="pilotPanel" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin:12px 20px;">
+<div id="choose-week-slot"></div>
+
+<section id="choose-week-card" class="panel no-print app-panel" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin:12px 20px;">
   <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+    <label for="weekSelect">Choose week:</label>
+    <select id="weekSelect"></select>
     <button id="refreshPilot" type="button">Refresh</button>
   </div>
   <div id="playersList" style="margin-top:12px;"></div>
@@ -4895,6 +4900,25 @@
   }
 
   initPlanInputs().catch(err => console.error("plan inputs init error", err));
+</script>
+<script type="module">
+  function placeChooseWeekCard() {
+    const slot = document.getElementById("choose-week-slot");
+    if (!slot) return;
+    const card =
+      document.getElementById("choose-week-card") ||
+      document.querySelector(".choose-week-card") ||
+      document.querySelector('[data-role="choose-week"]');
+    if (card && card.parentNode !== slot) {
+      slot.appendChild(card);
+    }
+  }
+  placeChooseWeekCard();
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("[data-view], .nav-item")) {
+      setTimeout(placeChooseWeekCard, 150);
+    }
+  });
 </script>
 <script type="module">
   const editWeekBtn = document.getElementById("btn-edit-week");
