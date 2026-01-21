@@ -127,6 +127,19 @@
 
       <div class="spacer"></div>
 
+      <section class="card" style="margin-top:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+          <h3 style="margin:0;">Upcoming Week</h3>
+          <div id="assigned-week-meta" class="muted"></div>
+        </div>
+
+        <div id="assigned-week-status" class="muted" style="margin-top:8px;"></div>
+
+        <div id="assigned-week-days" style="display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:10px; margin-top:12px;"></div>
+      </section>
+
+      <div class="spacer"></div>
+
       <div class="card" id="cmjCard">
         <div class="row" style="justify-content:space-between;">
           <strong>CMJ test</strong>
@@ -160,6 +173,106 @@
     <script type="module">
       import { requirePlayerAuth } from "./assets/player-auth-guard.js";
       await requirePlayerAuth();
+    </script>
+    <script type="module">
+      import { supabase } from "./assets/dataClient.js";
+
+      (async function () {
+        const statusEl = document.getElementById("assigned-week-status");
+        const metaEl = document.getElementById("assigned-week-meta");
+        const daysEl = document.getElementById("assigned-week-days");
+
+        const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg || ""; };
+
+        const escapeHtml = (str) =>
+          (str || "").toString().replace(/[&<>\"']/g, (m) => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;"
+          }[m]));
+
+        const dayCard = (title, type, load) => `
+          <div style="border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:10px; min-height:80px;">
+            <div style="font-weight:700; margin-bottom:6px;">${escapeHtml(title)}</div>
+            <div class="muted" style="font-size:12px;">${escapeHtml(type || "")}</div>
+            <div class="muted" style="font-size:12px;">${escapeHtml(load || "")}</div>
+          </div>
+        `;
+
+        try {
+          setStatus("Loading assigned week...");
+          const { data: sess } = await supabase.auth.getSession();
+          const userId = sess?.session?.user?.id;
+          if (!userId) {
+            setStatus("Not signed in.");
+            return;
+          }
+
+          const { data: player, error: pErr } = await supabase
+            .from("players")
+            .select("id, team_id, first_name, last_name")
+            .eq("auth_user_id", userId)
+            .maybeSingle();
+          if (pErr) throw pErr;
+          if (!player) {
+            setStatus("No player profile found for this account.");
+            return;
+          }
+
+          const { data: assignment, error: aErr } = await supabase
+            .from("week_assignments")
+            .select("week_id, status, assigned_at")
+            .eq("player_id", player.id)
+            .in("status", ["assigned","active"])
+            .order("assigned_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (aErr) throw aErr;
+
+          if (!assignment) {
+            setStatus("No week assigned yet.");
+            if (metaEl) metaEl.textContent = "";
+            if (daysEl) daysEl.innerHTML = "";
+            return;
+          }
+
+          const { data: week, error: wErr } = await supabase
+            .from("weeks")
+            .select("id, week_number, title, start_date, end_date, status")
+            .eq("id", assignment.week_id)
+            .single();
+          if (wErr) throw wErr;
+
+          if (metaEl) {
+            const label = `Week ${week.week_number || ""}${week.status ? " • " + week.status : ""}`.trim();
+            metaEl.textContent = label;
+          }
+
+          const { data: days, error: dErr } = await supabase
+            .from("week_days")
+            .select("*")
+            .eq("week_id", assignment.week_id)
+            .order("day_index", { ascending: true });
+          if (dErr) throw dErr;
+
+          if (!Array.isArray(days) || days.length === 0) {
+            setStatus("Week is assigned, but no days to render.");
+            if (daysEl) daysEl.innerHTML = "";
+            return;
+          }
+
+          setStatus("");
+          const fallbackNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+          const display = days.slice(0, 7).map((d, i) => {
+            const title = d.day_name || d.title || fallbackNames[i] || `Day ${i+1}`;
+            const type = d.day_type || d.type || d.session_type || "";
+            const load = d.load || d.exposure || d.load_exposure || "";
+            return dayCard(title, type, load);
+          });
+          if (daysEl) daysEl.innerHTML = display.join("");
+        } catch (err) {
+          console.error(err);
+          setStatus(`Error loading assigned week: ${err.message || err}`);
+        }
+      })();
     </script>
     <script type="module" src="./assets/player-token.js"></script>
   </body>

@@ -4622,13 +4622,62 @@
     <button id="refreshPilot" type="button">Refresh</button>
   </div>
   <div id="playersList" style="margin-top:12px;"></div>
-</section>
+  </section>
 
-<!-- 1️⃣ Supabase config (VERÐUR að vera á undan JS) -->
-<script>
-  window.__SUPABASE_URL__ = "https://tbtkxttiwbdmugjivmvb.supabase.co";
-  window.__SUPABASE_ANON_KEY__ = "sb_publishable_7ePvUt_6A7KKyGpV7eYfaQ_3w81AUuA";
-</script>
+  <!-- Assign Week Modal -->
+  <div id="assign-week-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal__backdrop" data-close="1"></div>
+    <div class="modal__panel">
+      <div class="modal__header">
+        <h3 style="margin:0">Assign week to players</h3>
+        <button id="assign-week-close" class="btn btn-ghost" type="button">Close</button>
+      </div>
+
+      <div class="modal__body">
+        <div id="assign-week-status" class="muted" style="margin-bottom:10px;"></div>
+
+        <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+          <input id="assign-week-search" type="text" placeholder="Search players..." style="flex:1;" />
+          <button id="assign-week-select-all" class="btn btn-ghost" type="button">Select all</button>
+          <button id="assign-week-clear" class="btn btn-ghost" type="button">Clear</button>
+        </div>
+
+        <div id="assign-week-list" style="max-height:340px; overflow:auto; border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:10px;"></div>
+      </div>
+
+      <div class="modal__footer" style="display:flex; justify-content:flex-end; gap:10px;">
+        <button id="assign-week-confirm" class="btn btn-primary" type="button">Assign selected</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .hidden { display:none !important; }
+    .modal { position:fixed; inset:0; z-index:9999; }
+    .modal__backdrop { position:absolute; inset:0; background:rgba(0,0,0,0.55); }
+    .modal__panel {
+      position:relative;
+      width:min(720px, calc(100% - 24px));
+      margin: 7vh auto;
+      background: rgba(20,24,35,0.98);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .modal__header { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .modal__body { margin-top:10px; }
+    .assign-row { display:flex; align-items:center; gap:10px; padding:10px; border-radius:12px; }
+    .assign-row:hover { background: rgba(255,255,255,0.04); }
+    .assign-name { font-weight:600; }
+    .assign-meta { opacity:0.75; font-size:12px; }
+  </style>
+
+  <!-- 1️⃣ Supabase config (VERÐUR að vera á undan JS) -->
+  <script>
+    window.__SUPABASE_URL__ = "https://tbtkxttiwbdmugjivmvb.supabase.co";
+    window.__SUPABASE_ANON_KEY__ = "sb_publishable_7ePvUt_6A7KKyGpV7eYfaQ_3w81AUuA";
+  </script>
 
 <!-- 2️⃣ Supabase client + API -->
 <script type="module" src="./assets/dataClient.js"></script>
@@ -4672,6 +4721,7 @@
   import { supabase, ensurePlayerToken, buildPlayerLink } from "./assets/dataClient.js";
 
   const PILOT_TEAM_ID = "b0748c6f-0b22-4043-8078-8dfd5f13a053";
+  window.weekBuilderState = window.weekBuilderState || { teamId: null, weekId: null };
 
   async function loadPlayersPilot() {
     const res = await supabase
@@ -4713,6 +4763,13 @@
         return `<option value="${w.id}">${label}</option>`;
       }).join("");
       if (!weekSel.value && weeks[0]) weekSel.value = weeks[0].id;
+      // keep shared state in sync for Assign modal
+      window.weekBuilderState.teamId = PILOT_TEAM_ID;
+      window.weekBuilderState.weekId = weekSel.value || (weeks[0] && weeks[0].id) || null;
+      weekSel.addEventListener("change", () => {
+        window.weekBuilderState.teamId = PILOT_TEAM_ID;
+        window.weekBuilderState.weekId = weekSel.value || null;
+      });
     }
 
     const list = document.getElementById("playersList");
@@ -4760,6 +4817,189 @@
 
   document.getElementById("refreshPilot")?.addEventListener("click", () => renderPilot());
   renderPilot().catch(err => console.error("pilot panel error", err));
+</script>
+
+<!-- Assign Week modal logic -->
+<script>
+(function () {
+  const sb = window.supabase || (window.api && window.api.supabase);
+  if (!sb) {
+    console.warn("Assign Week: supabase client not found on window.supabase or window.api.supabase");
+    return;
+  }
+
+  const $ = (id) => document.getElementById(id);
+
+  const modal = $("assign-week-modal");
+  const statusEl = $("assign-week-status");
+  const listEl = $("assign-week-list");
+  const searchEl = $("assign-week-search");
+  const btnClose = $("assign-week-close");
+  const btnConfirm = $("assign-week-confirm");
+  const btnSelectAll = $("assign-week-select-all");
+  const btnClear = $("assign-week-clear");
+
+  const openBtn =
+    document.getElementById("assign-week-open") ||
+    document.getElementById("assignWeekBtn") ||
+    Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").trim().toLowerCase() === "assign");
+
+  let roster = [];
+  let selected = new Set();
+
+  function showModal() {
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+  }
+  function hideModal() {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function setStatus(msg) {
+    statusEl.textContent = msg || "";
+  }
+
+  function getTeamIdFromUrl() {
+    const url = new URL(window.location.href);
+    return url.searchParams.get("team");
+  }
+
+  async function loadRoster(teamId) {
+    const { data, error } = await sb
+      .from("players")
+      .select("id, first_name, last_name, invite_email, email")
+      .eq("team_id", teamId)
+      .order("last_name", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  function escapeHtml(str) {
+    return (str || "").replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[m]));
+  }
+
+  function renderRoster(filter = "") {
+    const q = (filter || "").toLowerCase().trim();
+    const rows = roster.filter(p => {
+      if (!q) return true;
+      const name = `${p.first_name || ""} ${p.last_name || ""}`.toLowerCase();
+      const em = (p.email || p.invite_email || "").toLowerCase();
+      return name.includes(q) || em.includes(q);
+    });
+
+    listEl.innerHTML = rows.map(p => {
+      const name = `${p.first_name || ""} ${p.last_name || ""}`.trim() || "(no name)";
+      const meta = p.email || p.invite_email || "";
+      const checked = selected.has(p.id) ? "checked" : "";
+      return `
+        <label class="assign-row">
+          <input type="checkbox" data-player-id="${p.id}" ${checked} />
+          <div>
+            <div class="assign-name">${escapeHtml(name)}</div>
+            <div class="assign-meta">${escapeHtml(meta)}</div>
+          </div>
+        </label>
+      `;
+    }).join("");
+
+    listEl.querySelectorAll('input[type="checkbox"][data-player-id]').forEach(cb => {
+      cb.addEventListener("change", (e) => {
+        const id = e.target.getAttribute("data-player-id");
+        if (e.target.checked) selected.add(id);
+        else selected.delete(id);
+      });
+    });
+  }
+
+  async function assignSelected(teamId, weekId) {
+    const playerIds = Array.from(selected);
+    if (!playerIds.length) {
+      setStatus("Select at least one player.");
+      return;
+    }
+
+    setStatus("Assigning...");
+
+    const rows = playerIds.map(pid => ({
+      week_id: weekId,
+      player_id: pid,
+      status: "assigned"
+    }));
+
+    const { error } = await sb
+      .from("week_assignments")
+      .upsert(rows, { onConflict: "player_id,week_id" });
+
+    if (error) throw error;
+
+    setStatus(`Assigned Week to ${playerIds.length} player(s).`);
+  }
+
+  async function onOpenAssign() {
+    try {
+      const teamId = (window.weekBuilderState && window.weekBuilderState.teamId) || getTeamIdFromUrl();
+      const weekId = window.weekBuilderState && window.weekBuilderState.weekId;
+
+      if (!teamId) {
+        alert("Missing team id (URL ?team=...).");
+        return;
+      }
+      if (!weekId) {
+        alert("Missing week id. Make sure Week Builder has loaded/saved the week.");
+        return;
+      }
+
+      selected = new Set();
+      setStatus("Loading roster...");
+      showModal();
+
+      roster = await loadRoster(teamId);
+      setStatus(`Loaded ${roster.length} player(s). Select who should receive this week.`);
+      renderRoster("");
+
+    } catch (err) {
+      console.error(err);
+      setStatus(`Error: ${err.message || err}`);
+    }
+  }
+
+  if (openBtn) {
+    openBtn.id = openBtn.id || "assign-week-open";
+    openBtn.addEventListener("click", onOpenAssign);
+  } else {
+    console.warn("Assign Week: could not find the Assign button. Add id='assign-week-open' to it.");
+  }
+
+  btnClose?.addEventListener("click", hideModal);
+  modal?.querySelector(".modal__backdrop")?.addEventListener("click", hideModal);
+  searchEl?.addEventListener("input", (e) => renderRoster(e.target.value));
+  btnSelectAll?.addEventListener("click", () => {
+    roster.forEach(p => selected.add(p.id));
+    renderRoster(searchEl.value);
+  });
+  btnClear?.addEventListener("click", () => {
+    selected.clear();
+    renderRoster(searchEl.value);
+  });
+  btnConfirm?.addEventListener("click", async () => {
+    try {
+      const teamId = (window.weekBuilderState && window.weekBuilderState.teamId) || getTeamIdFromUrl();
+      const weekId = window.weekBuilderState && window.weekBuilderState.weekId;
+      await assignSelected(teamId, weekId);
+    } catch (err) {
+      console.error(err);
+      setStatus(`Error: ${err.message || err}`);
+    }
+  });
+})();
 </script>
 
 <!-- 4️⃣ Microdose kerfið þitt -->
