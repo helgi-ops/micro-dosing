@@ -30,6 +30,10 @@
       .badge { display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); font-weight:700; }
       #player-flow { display:grid; gap:14px; }
       #slot-header, #slot-today, #slot-checkin, #slot-cmj, #slot-week, #slot-upcoming { display:block; }
+      .subcard { margin-top: 12px; }
+      .items-list { list-style: none; padding: 0; margin: 0; }
+      .item-row { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+      .item-row:last-child { border-bottom: none; }
     </style>
   </head>
   <body>
@@ -53,6 +57,16 @@
         <div id="slot-week"></div>
       </main>
     </div>
+
+    <section class="card" id="player-week-view">
+      <div class="card-header">
+        <h3>Vikan mín</h3>
+      </div>
+      <div class="card-body">
+        <div id="week-meta" class="hint"></div>
+        <div id="week-days-container"></div>
+      </div>
+    </section>
 
     <div class="wrap is-hidden" id="player-duplicates">
       <div class="row" style="justify-content:space-between;">
@@ -188,7 +202,7 @@
 
       <div class="spacer"></div>
 
-      <div class="card" id="assignCard">
+      <div class="card" id="assignCard" data-role="today-card">
         <div class="row" style="justify-content:space-between;">
           <strong>Today’s workout</strong>
         </div>
@@ -227,11 +241,11 @@
 
         try {
           setStatus("Loading assigned week...");
-          const { data: sess } = await supabase.auth.getSession();
-          const userId = sess?.session?.user?.id;
-          if (!userId) {
-            setStatus("Not signed in.");
-            return;
+        const { data: sess } = await supabase.auth.getSession();
+        const userId = sess?.session?.user?.id;
+        if (!userId) {
+          setStatus("Not signed in.");
+          return;
           }
 
           const { data: player, error: pErr } = await supabase
@@ -304,7 +318,127 @@
     </script>
     <script type="module" src="./assets/player-token.js"></script>
   </body>
-  <script>
+  <script type="module">
+    import { api } from "./assets/dataClient.js";
+
+    function getPlayerIdFromUrl() {
+      const url = new URL(window.location.href);
+      return url.searchParams.get("id");
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function setWeekMeta(text) {
+      const el = document.getElementById("week-meta");
+      if (!el) return;
+      el.textContent = text || "";
+    }
+
+    function renderWeekDays({ days, weekDaysByIndex }) {
+      const root = document.getElementById("week-days-container");
+      if (!root) return;
+
+      root.innerHTML = "";
+
+      if (!days?.length) {
+        root.innerHTML = `<div class="hint">Engir dagar fundust í template.</div>`;
+        return;
+      }
+
+      for (const d of days) {
+        const dayIndex = d.day_index ?? null;
+        const dateStr = (dayIndex != null && weekDaysByIndex.has(dayIndex))
+          ? weekDaysByIndex.get(dayIndex)
+          : null;
+
+        const items = (d.program_template_items || []).map(it => {
+          const sets = it.sets != null ? `${it.sets}x` : "";
+          const reps = it.reps != null ? `${it.reps}` : "";
+          const prescription = (sets || reps) ? ` — ${sets}${reps}` : "";
+          const type = it.item_type ? ` <span class="hint">(${escapeHtml(it.item_type)})</span>` : "";
+
+          return `
+            <li class="item-row">
+              <div>
+                <strong>${escapeHtml(it.name || "Item")}</strong>${type}
+                <div class="hint">${escapeHtml(prescription)}</div>
+              </div>
+            </li>
+          `;
+        }).join("");
+
+        const dayCard = document.createElement("div");
+        dayCard.className = "card subcard";
+        dayCard.innerHTML = `
+          <div class="card-header">
+            <h4>Dagur ${escapeHtml(dayIndex ?? "")}</h4>
+            <div class="hint">${dateStr ? escapeHtml(dateStr) : ""}</div>
+          </div>
+          <div class="card-body">
+            ${d.notes ? `<div class="hint">${escapeHtml(d.notes)}</div>` : ""}
+            <ul class="items-list">
+              ${items || `<li class="hint">Engin items.</li>`}
+            </ul>
+          </div>
+        `;
+
+        root.appendChild(dayCard);
+      }
+    }
+
+    async function loadReadOnlyWeekView() {
+      let playerId = getPlayerIdFromUrl();
+      if (!playerId) {
+        playerId = await api.getMyPlayerId();
+      }
+      if (!playerId) {
+        setWeekMeta("Vantar player id (hvorki í URL né player_users mapping).");
+        return;
+      }
+
+      const assignment = await api.getLatestWeekAssignmentForPlayer(playerId);
+      if (!assignment?.weeks?.id) {
+        setWeekMeta("Engin vika er úthlutuð ennþá.");
+        return;
+      }
+
+      const week = assignment.weeks;
+      if (!week.source_template_id) {
+        setWeekMeta("Þessi vika er ekki tengd við template (weeks.source_template_id er tómt).");
+        return;
+      }
+
+      const { template, days } = await api.getProgramTemplateWithDaysAndItems(week.source_template_id);
+      const weekDays = await api.getWeekDays(week.id);
+      const weekDaysByIndex = new Map();
+      for (const wd of weekDays) {
+        if (wd?.day_index != null && wd?.date) {
+          weekDaysByIndex.set(wd.day_index, wd.date);
+        }
+      }
+
+      const weekTitle = week.title || `Week ${week.week_number ?? ""}`;
+      const templateTitle = template?.title || "Template";
+      setWeekMeta(`${weekTitle} — ${templateTitle}`);
+
+      renderWeekDays({ days, weekDaysByIndex });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      applyPlayerFlowLayout();
+      loadReadOnlyWeekView().catch(err => {
+        console.error(err);
+        setWeekMeta(err?.message || "Villa við að hlaða viku.");
+      });
+    });
+  </script>
     function applyPlayerFlowLayout() {
       const move = (slotId, elId) => {
         const slot = document.getElementById(slotId);
@@ -316,6 +450,7 @@
       move('slot-checkin', 'readinessCard');
       move('slot-upcoming', 'upcoming-week-card');
       move('slot-cmj', 'cmjCard');
+      move('slot-week', 'player-week-view');
 
       const dup = document.getElementById('player-duplicates');
       if (dup) dup.style.display = 'none';
