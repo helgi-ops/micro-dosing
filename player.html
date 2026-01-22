@@ -23,10 +23,36 @@
       .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.15); }
       .spacer { height: 10px; }
       a { color: inherit; }
+      .is-hidden { display:none !important; }
+      #player-shell { max-width: 1000px; margin: 0 auto; padding: 18px; display:grid; gap:16px; }
+      .player-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+      .player-header__left h1 { margin:0; font-size:24px; }
+      .badge { display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); font-weight:700; }
+      #player-flow { display:grid; gap:14px; }
+      #slot-today, #slot-checkin, #slot-cmj, #slot-week { display:block; }
     </style>
   </head>
   <body>
-    <div class="wrap">
+    <div id="player-shell">
+      <header class="player-header card">
+        <div class="player-header__left">
+          <h1 id="playerName">Player</h1>
+          <div class="muted" id="player-subtitle">Loading…</div>
+        </div>
+        <div class="player-header__right">
+          <span class="badge" id="assigned-week-badge">No week assigned</span>
+        </div>
+      </header>
+
+      <main id="player-flow">
+        <div id="slot-today"></div>
+        <div id="slot-checkin"></div>
+        <div id="slot-cmj"></div>
+        <div id="slot-week"></div>
+      </main>
+    </div>
+
+    <div class="wrap is-hidden">
       <div class="row" style="justify-content:space-between;">
         <div class="row">
           <a href="./coach.html" class="muted">← Back</a>
@@ -38,9 +64,9 @@
 
       <div class="spacer"></div>
 
-      <h1 id="playerName">Player</h1>
+      <h1 id="playerNameLegacy">Player</h1>
 
-      <div class="card" id="playerCard">
+      <div class="card is-hidden" id="playerCard">
         <div class="row" style="justify-content:space-between;">
           <div>
             <div style="font-size:22px; font-weight:700;" id="playerNameCard">—</div>
@@ -50,7 +76,7 @@
 
       <div class="spacer"></div>
 
-      <div class="card">
+      <div class="card is-hidden">
         <div class="row" style="justify-content:space-between;">
           <strong>Assigned week preview</strong>
           <span class="muted" id="weeksCount">—</span>
@@ -62,7 +88,7 @@
 
       <div class="spacer"></div>
 
-      <section id="weekPreview">
+      <section id="weekPreview" class="is-hidden">
         <h2>Vikan þín</h2>
         <div id="weekBox"></div>
       </section>
@@ -163,7 +189,6 @@
       <div class="card" id="assignCard">
         <div class="row" style="justify-content:space-between;">
           <strong>Today’s workout</strong>
-          <button id="assignWorkoutBtn">Assign workout</button>
         </div>
         <div class="spacer"></div>
         <div id="workoutArea" class="muted">No workout assigned yet.</div>
@@ -181,6 +206,7 @@
         const statusEl = document.getElementById("assigned-week-status");
         const metaEl = document.getElementById("assigned-week-meta");
         const daysEl = document.getElementById("assigned-week-days");
+        const badgeEl = document.getElementById("assigned-week-badge");
 
         const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg || ""; };
 
@@ -228,9 +254,10 @@
           if (aErr) throw aErr;
 
           if (!assignment) {
-            setStatus("No week assigned yet.");
+            setStatus("No week assigned yet. Tap refresh in a moment.");
             if (metaEl) metaEl.textContent = "";
             if (daysEl) daysEl.innerHTML = "";
+            if (badgeEl) badgeEl.textContent = "No week assigned";
             return;
           }
 
@@ -241,10 +268,9 @@
             .single();
           if (wErr) throw wErr;
 
-          if (metaEl) {
-            const label = `Week ${week.week_number || ""}${week.status ? " • " + week.status : ""}`.trim();
-            metaEl.textContent = label;
-          }
+          const label = `Week ${week.week_number || ""}${week.status ? " • " + week.status : ""}`.trim();
+          if (metaEl) metaEl.textContent = label;
+          if (badgeEl) badgeEl.textContent = label || "Week assigned";
 
           const { data: days, error: dErr } = await supabase
             .from("week_days")

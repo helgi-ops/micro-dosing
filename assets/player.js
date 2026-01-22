@@ -354,16 +354,8 @@ let cmjRecentVal = null;
       });
     });
 
-    $("assignWorkoutBtn").onclick = async () => {
-      try {
-        setStatus("Assigning workout…");
-        const latestCheck = await api.getLatestCheckin(playerId, today);
-        if (!latestCheck) throw new Error("Submit readiness first.");
-        await assignWorkoutForToday(latestCheck);
-      } catch (e) {
-        setStatus(e?.message || String(e));
-      }
-    };
+    const assignBtn = $("assignWorkoutBtn");
+    if (assignBtn) assignBtn.style.display = "none";
 
     $("sendInviteBtn").onclick = async () => {
       try {
