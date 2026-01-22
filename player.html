@@ -29,12 +29,12 @@
       .player-header__left h1 { margin:0; font-size:24px; }
       .badge { display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); font-weight:700; }
       #player-flow { display:grid; gap:14px; }
-      #slot-today, #slot-checkin, #slot-cmj, #slot-week { display:block; }
+      #slot-header, #slot-today, #slot-checkin, #slot-cmj, #slot-week, #slot-upcoming { display:block; }
     </style>
   </head>
   <body>
     <div id="player-shell">
-      <header class="player-header card">
+      <header class="player-header card" id="player-header-card">
         <div class="player-header__left">
           <h1 id="playerName">Player</h1>
           <div class="muted" id="player-subtitle">Loading…</div>
@@ -45,14 +45,16 @@
       </header>
 
       <main id="player-flow">
+        <div id="slot-header"></div>
         <div id="slot-today"></div>
         <div id="slot-checkin"></div>
+        <div id="slot-upcoming"></div>
         <div id="slot-cmj"></div>
         <div id="slot-week"></div>
       </main>
     </div>
 
-    <div class="wrap is-hidden">
+    <div class="wrap is-hidden" id="player-duplicates">
       <div class="row" style="justify-content:space-between;">
         <div class="row">
           <a href="./coach.html" class="muted">← Back</a>
@@ -153,7 +155,7 @@
 
       <div class="spacer"></div>
 
-      <section class="card" style="margin-top:16px;">
+      <section class="card" style="margin-top:16px;" id="upcoming-week-card">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
           <h3 style="margin:0;">Upcoming Week</h3>
           <div id="assigned-week-meta" class="muted"></div>
@@ -302,4 +304,23 @@
     </script>
     <script type="module" src="./assets/player-token.js"></script>
   </body>
+  <script>
+    function applyPlayerFlowLayout() {
+      const move = (slotId, elId) => {
+        const slot = document.getElementById(slotId);
+        const el = document.getElementById(elId);
+        if (slot && el) slot.appendChild(el);
+      };
+      move('slot-header', 'player-header-card');
+      move('slot-today', 'assignCard');
+      move('slot-checkin', 'readinessCard');
+      move('slot-upcoming', 'upcoming-week-card');
+      move('slot-cmj', 'cmjCard');
+
+      const dup = document.getElementById('player-duplicates');
+      if (dup) dup.style.display = 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', applyPlayerFlowLayout);
+  </script>
 </html>
