@@ -13,3 +13,8 @@ export const supabase =
       storage: window.localStorage,
     },
   }));
+
+// compat bridge for older modules
+window.supabase = window.__supabase;
+window.api = window.api || {};
+window.api.supabase = window.__supabase;

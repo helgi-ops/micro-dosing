@@ -1,6 +1,12 @@
 // assets/roster-supabase.js
 import { api, supabase, getCachedSession, isAuthReady, SUPABASE_URL_PUBLIC, SUPABASE_ANON_PUBLIC, ensurePlayerToken, buildPlayerLink } from "./dataClient.js";
 
+// Ensure client is present even if imports change
+const __supabase = supabase || window.__supabase || window.supabase || (window.api && window.api.supabase);
+if (!__supabase) {
+  console.warn("Supabase client not found on window.__supabase/window.supabase/window.api.supabase");
+}
+
 // DEBUG proof-of-life
 window.__ROSTER_SUPABASE_LOADED_AT = new Date().toISOString();
 console.log("[roster-supabase] loaded", window.__ROSTER_SUPABASE_LOADED_AT);
