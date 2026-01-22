@@ -377,6 +377,10 @@
   <link rel="stylesheet" href="./assets/ui.css">
   <style>
     .is-hidden { display: none !important; }
+    #coach-flow {
+      display: grid;
+      gap: 18px;
+    }
     .coach-layout {
       display: grid;
       gap: 16px;
@@ -466,6 +470,9 @@
       box-sizing: border-box;
       margin: 16px 0;
     }
+    .coach-sidebar { display: none !important; }
+    .app-shell { display: block; }
+    .app { margin-left: 0; }
   </style>
 </head>
 <body>
@@ -492,10 +499,10 @@
   <div id="coach-flow">
     <div id="slot-roster-summary"></div>
     <div id="slot-week-builder"></div>
-    <div id="slot-week-frame"></div>
     <div id="slot-choose-week"></div>
     <div id="slot-monitoring"></div>
     <div id="slot-reports"></div>
+    <div id="slot-client-info"></div>
     <div id="slot-program-builder"></div>
   </div>
 
@@ -806,8 +813,6 @@
       </div>
   </section>
 
-  <section id="choose-week-slot"></section>
-
   <section class="panel roster-panel no-print app-panel" id="panel-roster" data-section="roster">
       <div class="panel-head">
         <div>
@@ -1071,7 +1076,7 @@
     </section>
 
   <div>
-  <form>
+<form id="client-info-card" class="panel no-print app-panel" style="padding:12px;">
     <div class="stack">
       <div class="two-col">
         <label>
@@ -4915,10 +4920,10 @@
     const map = [
       ["slot-roster-summary", "#panel-roster"],
       ["slot-week-builder", "#panel-weekBuilder"],
-      ["slot-week-frame", "#week-frame-card"],
       ["slot-choose-week", "#choose-week-card, .choose-week-card, [data-role=\"choose-week\"]"],
       ["slot-monitoring", "#panel-monitoring"],
       ["slot-reports", "#panel-reports"],
+      ["slot-client-info", "#client-info-card"],
       ["slot-program-builder", "#program-builder-container, [data-section=\"program-builder\"]"],
     ];
     for (const [slotId, selector] of map) {
