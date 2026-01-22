@@ -9,20 +9,24 @@ const LOGIN_URL = `${window.location.origin}/index.html`;
 export const SUPABASE_URL_PUBLIC = SUPABASE_URL;
 export const SUPABASE_ANON_PUBLIC = SUPABASE_ANON_KEY;
 
-export const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
-  {
+// --- SINGLETON supabase client (prevents AbortError lock collisions) ---
+const _supabase =
+  window.__supabase ||
+  (window.__supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      storage: localStorage,
+      storage: window.localStorage,
       storageKey: "coach-dashboard-auth"
     }
-  }
-);
+  }));
+
+export const supabase = _supabase;
+// expose for legacy/non-module usage
 window.supabase = supabase;
+window.api = window.api || {};
+window.api.supabase = supabase;
 
 // Handle magic-link landing early so session is stored and hash cleared
 if (location.hash && location.hash.includes("access_token=")) {
