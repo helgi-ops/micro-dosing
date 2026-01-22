@@ -1215,3 +1215,8 @@ export async function waitForAuthReady() {
   // annars bíð eftir INITIAL_SESSION
   return __authReadyPromise;
 }
+
+// expose for non-module scripts (modals, legacy code)
+window.supabase = supabase;
+window.api = window.api || {};
+window.api.supabase = supabase;
