@@ -4784,39 +4784,7 @@
     .assign-meta { opacity:0.75; font-size:12px; }
   </style>
 
-  <!-- 1️⃣ Supabase config (VERÐUR að vera á undan JS) -->
-  <script>
-    window.__SUPABASE_URL__ = "https://tbtkxttiwbdmugjivmvb.supabase.co";
-    window.__SUPABASE_ANON_KEY__ = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRidGt4dHRpd2JkbXVnaml2bXZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMjYxOTgsImV4cCI6MjA4MzkwMjE5OH0.2PvhrzwYdx5oxf_oARFIio5Es8mgv3_ks3CAqxUcsKI";
-  </script>
-
-<!-- 2️⃣ Supabase client + API -->
-<script type="module" src="./assets/dataClient.js"></script>
-
-<!-- 3️⃣ Auth + Team selector -->
-<script type="module">
-  import { supabase } from "./assets/dataClient.js";
-
-  async function waitForSession(ms = 2000) {
-    const start = Date.now();
-    let { data } = await supabase.auth.getSession();
-    if (data?.session) return data.session;
-    while (Date.now() - start < ms) {
-      await new Promise(r => setTimeout(r, 150));
-      ({ data } = await supabase.auth.getSession());
-      if (data?.session) return data.session;
-    }
-    return null;
-  }
-
-  const session = await waitForSession();
-  if (!session) {
-    const next = encodeURIComponent(location.pathname + location.search);
-    location.replace(`/index.html?next=${next}`);
-    throw new Error("No session");
-  }
-  document.documentElement.classList.remove("auth-loading");
-</script>
+ 
 <script type="module">
   import { supabase } from "./assets/dataClient.js";
 
