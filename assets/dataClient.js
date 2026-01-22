@@ -1,5 +1,5 @@
 // assets/dataClient.js
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 const SUPABASE_URL = "https://tbtkxttiwbdmugjivmvb.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_7ePvUt_6A7KKyGpV7eYfaQ_3w81AUuA";
@@ -17,6 +17,7 @@ export const supabase = createClient(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      storage: localStorage,
       storageKey: "coach-dashboard-auth"
     }
   }
@@ -236,6 +237,97 @@ export const api = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  async getMyPlayerId() {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    if (!session?.user?.id) return null;
+
+    const { data, error: e2 } = await supabase
+      .from("player_users")
+      .select("player_id")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
+    if (e2) throw e2;
+    return data?.player_id ?? null;
+  },
+
+  async getLatestWeekAssignmentForPlayer(playerId) {
+    const { data, error } = await supabase
+      .from("week_assignments")
+      .select(`
+        week_id,
+        status,
+        assigned_at,
+        weeks:week_id (
+          id,
+          team_id,
+          title,
+          week_number,
+          start_date,
+          end_date,
+          iso_year,
+          iso_week,
+          source_template_id
+        )
+      `)
+      .eq("player_id", playerId)
+      .order("assigned_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
+  },
+
+  async getProgramTemplateWithDaysAndItems(templateId) {
+    const { data: template, error: e1 } = await supabase
+      .from("program_templates")
+      .select("id, team_id, title, description, level, goal, tags, created_at")
+      .eq("id", templateId)
+      .single();
+
+    if (e1) throw e1;
+
+    const { data: days, error: e2 } = await supabase
+      .from("program_template_days")
+      .select(`
+        id,
+        template_id,
+        day_index,
+        notes,
+        created_at,
+        program_template_items (
+          id,
+          template_day_id,
+          sort_order,
+          item_type,
+          name,
+          sets,
+          reps
+        )
+      `)
+      .eq("template_id", templateId)
+      .order("day_index", { ascending: true })
+      .order("sort_order", { foreignTable: "program_template_items", ascending: true });
+
+    if (e2) throw e2;
+
+    return { template, days: days || [] };
+  },
+
+  async getWeekDays(weekId) {
+    const { data, error } = await supabase
+      .from("week_days")
+      .select("id, week_id, day_index, date, created_at")
+      .eq("week_id", weekId)
+      .order("day_index", { ascending: true, nullsFirst: true })
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
   },
 
   async getMyPlayerId() {

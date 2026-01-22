@@ -33,6 +33,15 @@ function setActiveTeam(teamId, label) {
   window.dispatchEvent(new Event("team:changed"));
 }
 
+export async function requireSessionOrRedirect() {
+  await waitForAuthReady?.();
+  let { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (data?.session) return data.session;
+  window.location.href = "index.html";
+  return null;
+}
+
 async function ensureSessionOrRedirect() {
   await waitForAuthReady?.();
   let session = getCachedSession?.();
