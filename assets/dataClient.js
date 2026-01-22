@@ -5,7 +5,7 @@ const SUPABASE_URL = "https://tbtkxttiwbdmugjivmvb.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRidGt4dHRpd2JkbXVnaml2bXZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMjYxOTgsImV4cCI6MjA4MzkwMjE5OH0.2PvhrzwYdx5oxf_oARFIio5Es8mgv3_ks3CAqxUcsKI";
 
 const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
-const LOGIN_URL = `${window.location.origin}/coach.html`;
+const LOGIN_URL = `${window.location.origin}/index.html`;
 export const SUPABASE_URL_PUBLIC = SUPABASE_URL;
 export const SUPABASE_ANON_PUBLIC = SUPABASE_ANON_KEY;
 
