@@ -213,10 +213,8 @@
 
     <script type="module">
       import { requirePlayerAuth } from "./assets/player-auth-guard.js";
-      await requirePlayerAuth();
-    </script>
-    <script type="module">
-      import { supabase } from "./assets/dataClient.js";
+      import { supabase, api } from "./assets/dataClient.js";
+      import { requireSessionOrRedirect } from "./assets/app-auth.js";
 
       (async function () {
         const statusEl = document.getElementById("assigned-week-status");
@@ -431,14 +429,6 @@
       renderWeekDays({ days, weekDaysByIndex });
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      applyPlayerFlowLayout();
-      loadReadOnlyWeekView().catch(err => {
-        console.error(err);
-        setWeekMeta(err?.message || "Villa við að hlaða viku.");
-      });
-    });
-  </script>
     function applyPlayerFlowLayout() {
       const move = (slotId, elId) => {
         const slot = document.getElementById(slotId);
@@ -456,6 +446,15 @@
       if (dup) dup.style.display = 'none';
     }
 
-    document.addEventListener('DOMContentLoaded', applyPlayerFlowLayout);
+    document.addEventListener("DOMContentLoaded", async () => {
+      const session = await requireSessionOrRedirect();
+      if (!session) return;
+      applyPlayerFlowLayout();
+      await requirePlayerAuth(); // ensure recovery/invite is handled
+      loadReadOnlyWeekView().catch(err => {
+        console.error(err);
+        setWeekMeta(err?.message || "Villa við að hlaða viku.");
+      });
+    });
   </script>
 </html>

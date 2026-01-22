@@ -330,6 +330,159 @@ export const api = {
     return data || [];
   },
 
+  async listPublishedWeeks(teamId) {
+    const { data, error } = await supabase
+      .from("weeks")
+      .select("id, title, week_number, start_date, end_date, iso_year, iso_week, status, created_at")
+      .eq("team_id", teamId)
+      .eq("status", "published")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  async publishWeek(payload) {
+    const {
+      teamId,
+      weekId,
+      title,
+      weekNumber,
+      startDate,
+      endDate,
+      isoYear,
+      isoWeek,
+      sourceTemplateId,
+      days,
+    } = payload;
+
+    const weekRow = {
+      id: weekId,
+      team_id: teamId,
+      title: title ?? null,
+      week_number: weekNumber ?? null,
+      start_date: startDate ?? null,
+      end_date: endDate ?? null,
+      iso_year: isoYear ?? null,
+      iso_week: isoWeek ?? null,
+      source_template_id: sourceTemplateId ?? null,
+      status: "published",
+    };
+
+    const { data: week, error: e1 } = await supabase
+      .from("weeks")
+      .upsert(weekRow, { onConflict: "id" })
+      .select()
+      .single();
+
+    if (e1) throw e1;
+
+    const rows = (days || []).map((itemsObj, i) => ({
+      week_id: week.id,
+      day_index: i,
+      items: itemsObj ?? {},
+      date: null,
+    }));
+
+    for (let i = rows.length; i < 7; i++) {
+      rows.push({ week_id: week.id, day_index: i, items: {}, date: null });
+    }
+
+    const { error: e2 } = await supabase
+      .from("week_days")
+      .upsert(rows, { onConflict: "week_id,day_index" });
+
+    if (e2) throw e2;
+
+    return week;
+  },
+
+  async assignSelectedWeekToPlayer({ playerId, weekId }) {
+    const row = {
+      id: crypto.randomUUID ? crypto.randomUUID() : undefined,
+      player_id: playerId,
+      week_id: weekId,
+      status: "assigned",
+      assigned_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from("week_assignments")
+      .upsert(row, { onConflict: "player_id" })
+      .select("id, player_id, week_id, status, assigned_at")
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async listPublishedWeeks(teamId) {
+    const { data, error } = await supabase
+      .from("weeks")
+      .select("id, title, week_number, start_date, end_date, iso_year, iso_week, status, created_at")
+      .eq("team_id", teamId)
+      .eq("status", "published")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  async publishWeek(payload) {
+    const {
+      teamId,
+      weekId,
+      title,
+      weekNumber,
+      startDate,
+      endDate,
+      isoYear,
+      isoWeek,
+      sourceTemplateId,
+      days,
+    } = payload;
+
+    const weekRow = {
+      id: weekId,
+      team_id: teamId,
+      title: title ?? null,
+      week_number: weekNumber ?? null,
+      start_date: startDate ?? null,
+      end_date: endDate ?? null,
+      iso_year: isoYear ?? null,
+      iso_week: isoWeek ?? null,
+      source_template_id: sourceTemplateId ?? null,
+      status: "published",
+    };
+
+    const { data: week, error: e1 } = await supabase
+      .from("weeks")
+      .upsert(weekRow, { onConflict: "id" })
+      .select()
+      .single();
+
+    if (e1) throw e1;
+
+    const rows = (days || []).map((itemsObj, i) => ({
+      week_id: week.id,
+      day_index: i,
+      items: itemsObj ?? {},
+      date: null,
+    }));
+
+    for (let i = rows.length; i < 7; i++) {
+      rows.push({ week_id: week.id, day_index: i, items: {}, date: null });
+    }
+
+    const { error: e2 } = await supabase
+      .from("week_days")
+      .upsert(rows, { onConflict: "week_id,day_index" });
+
+    if (e2) throw e2;
+
+    return week;
+  },
+
   async getMyPlayerId() {
     const { data: { session }, error } = await supabase.auth.getSession();
     if (error) throw error;

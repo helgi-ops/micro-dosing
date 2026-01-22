@@ -1305,9 +1305,9 @@
 
   <section id="choose-week-card" class="panel no-print app-panel" data-role="choose-week" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin:12px 20px;">
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-      <label for="weekSelect">Choose week:</label>
-      <select id="weekSelect"></select>
-      <button id="refreshPilot" type="button">Refresh</button>
+    <label for="week-select">Choose week:</label>
+    <select id="week-select"></select>
+    <button id="week-refresh-btn" type="button">Refresh</button>
     </div>
     <div id="playersList" style="margin-top:12px;"></div>
   </section>
@@ -4991,7 +4991,7 @@
 <script type="module" src="./assets/app-auth.js"></script>
 <script type="module" src="./assets/roster-supabase.js"></script>
 <script type="module">
-  import { supabase, ensurePlayerToken, buildPlayerLink } from "./assets/dataClient.js";
+  import { supabase, ensurePlayerToken, buildPlayerLink, api } from "./assets/dataClient.js";
 
   const PILOT_TEAM_ID = "b0748c6f-0b22-4043-8078-8dfd5f13a053";
   window.weekBuilderState = window.weekBuilderState || { teamId: null, weekId: null };
@@ -5007,29 +5007,19 @@
   }
 
   async function loadWeeksPilot() {
-    const res = await supabase
-      .from("weeks")
-      .select("id, week_number, title, start_date, end_date")
-      .eq("team_id", PILOT_TEAM_ID)
-      .order("week_number", { ascending: false });
-    if (res.error) throw res.error;
-    return res.data || [];
+    const res = await api.listPublishedWeeks(PILOT_TEAM_ID);
+    return res || [];
   }
 
   async function assignWeekToPlayer(playerId, weekId) {
-    const res = await supabase.from("week_assignments").insert({
-      player_id: playerId,
-      week_id: weekId,
-      status: "assigned",
-    });
-    if (res.error) throw res.error;
+    await api.assignSelectedWeekToPlayer({ playerId, weekId });
   }
 
   async function renderPilot() {
     const weeks = await loadWeeksPilot();
     const players = await loadPlayersPilot();
 
-    const weekSel = document.getElementById("weekSelect");
+    const weekSel = document.getElementById("week-select");
     if (weekSel) {
       weekSel.innerHTML = weeks.map(w => {
         const label = `Week ${w.week_number ?? ""} — ${w.title ?? ""}`.trim();
@@ -5050,46 +5040,72 @@
       list.innerHTML = players.map(p => `
         <div style="display:flex;gap:10px;align-items:center;margin:8px 0;">
           <div style="min-width:220px;">${p.first_name ?? ""} ${p.last_name ?? ""}</div>
-          <button data-act="assign" data-player="${p.id}">Assign selected week</button>
-          <button data-act="copyLink" data-player="${p.id}">Copy player link</button>
+          <button class="assign-week-btn" data-act="assign" data-player="${p.id}" data-player-id="${p.id}">Assign selected week</button>
+          <button class="copy-player-link-btn" data-act="copyLink" data-player="${p.id}" data-player-id="${p.id}">Copy player link</button>
         </div>
       `).join("");
     }
   }
 
-  document.addEventListener("click", async (e) => {
-    const btn = e.target.closest("button[data-act]");
-    if (!btn) return;
-    const act = btn.getAttribute("data-act");
-    const playerId = btn.getAttribute("data-player");
-    const weekId = document.getElementById("weekSelect")?.value;
+  function toast(msg, isError = false) {
+    if (isError) console.error(msg);
+    else console.log(msg);
+  }
+
+  function getSelectedWeekId() {
+    const sel = document.getElementById("week-select");
+    return sel?.value || null;
+  }
+
+  async function onAssignWeekClick(e) {
+    const btn = e.currentTarget;
+    const playerId = btn.dataset.playerId || btn.getAttribute("data-player");
+    const weekId = getSelectedWeekId();
+
+    if (!playerId) return toast("Missing playerId on button", true);
+    if (!weekId) return toast("Choose a week first.", true);
+
+    btn.disabled = true;
+    const prevText = btn.textContent;
+    btn.textContent = "Assigning…";
 
     try {
-      btn.disabled = true;
-      if (act === "assign") {
-        if (!weekId) throw new Error("Pick a week first");
-        await assignWeekToPlayer(playerId, weekId);
-        const old = btn.textContent;
-        btn.textContent = "Assigned!";
-        setTimeout(() => (btn.textContent = old || "Assign selected week"), 900);
-      }
-      if (act === "copyLink") {
-        const token = await ensurePlayerToken(playerId, 120);
-        const url = buildPlayerLink(token);
-        await navigator.clipboard.writeText(url);
-        const old = btn.textContent;
-        btn.textContent = "Copied!";
-        setTimeout(() => (btn.textContent = old || "Copy player link"), 900);
-      }
+      await assignWeekToPlayer(playerId, weekId);
+      btn.textContent = "Assigned ✅";
+      setTimeout(() => (btn.textContent = prevText || "Assign selected week"), 1200);
     } catch (err) {
-      alert(err?.message || String(err));
+      btn.textContent = prevText || "Assign selected week";
+      toast(err?.message || "Assign failed", true);
     } finally {
       btn.disabled = false;
     }
-  });
+  }
 
-  document.getElementById("refreshPilot")?.addEventListener("click", () => renderPilot());
-  renderPilot().catch(err => console.error("pilot panel error", err));
+  async function onCopyPlayerLinkClick(e) {
+    const btn = e.currentTarget;
+    const playerId = btn.dataset.playerId || btn.getAttribute("data-player");
+    if (!playerId) return;
+    const url = new URL(`${window.location.origin}/player.html`);
+    url.searchParams.set("id", playerId);
+    await navigator.clipboard.writeText(url.toString());
+    const old = btn.textContent;
+    btn.textContent = "Copied!";
+    setTimeout(() => (btn.textContent = old || "Copy player link"), 900);
+  }
+
+  function wireAssignButtons() {
+    document.querySelectorAll(".assign-week-btn").forEach(btn => {
+      btn.removeEventListener("click", onAssignWeekClick);
+      btn.addEventListener("click", onAssignWeekClick);
+    });
+    document.querySelectorAll(".copy-player-link-btn").forEach(btn => {
+      btn.removeEventListener("click", onCopyPlayerLinkClick);
+      btn.addEventListener("click", onCopyPlayerLinkClick);
+    });
+  }
+
+  document.getElementById("refreshPilot")?.addEventListener("click", () => renderPilot().then(wireAssignButtons));
+  renderPilot().then(wireAssignButtons).catch(err => console.error("pilot panel error", err));
 </script>
 
 <!-- Assign Week modal logic -->
@@ -5293,6 +5309,80 @@
       }
     });
   }
+</script>
+<script type="module">
+  import { api } from "./assets/dataClient.js";
+
+  function getSelectedWeekId() {
+    const sel = document.getElementById("week-select");
+    return sel?.value || null;
+  }
+
+  async function assignSelectedWeekToPlayer(playerId, weekId) {
+    const row = {
+      player_id: playerId,
+      week_id: weekId,
+      status: "assigned",
+      assigned_at: new Date().toISOString()
+    };
+
+    const { data, error } = await api.supabase
+      .from("week_assignments")
+      .upsert(row, { onConflict: "player_id" })
+      .select("id, player_id, week_id, assigned_at")
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async function onAssignClick(e) {
+    const btn = e.currentTarget;
+    const playerId = btn.dataset.playerId;
+    const weekId = getSelectedWeekId();
+
+    if (!playerId) {
+      console.error("Missing data-player-id on button");
+      return;
+    }
+    if (!weekId) {
+      alert("Choose a week first.");
+      return;
+    }
+
+    btn.disabled = true;
+    const prev = btn.textContent;
+    btn.textContent = "Assigning…";
+
+    try {
+      await assignSelectedWeekToPlayer(playerId, weekId);
+      btn.textContent = "Assigned ✅";
+      setTimeout(() => (btn.textContent = prev), 1200);
+    } catch (err) {
+      console.error(err);
+      btn.textContent = prev;
+      alert(err?.message || "Assign failed");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function wireAssignButtons() {
+    document.querySelectorAll(".assign-week-btn").forEach((btn) => {
+      btn.removeEventListener("click", onAssignClick);
+      btn.addEventListener("click", onAssignClick);
+    });
+  }
+
+  wireAssignButtons();
+
+  document.getElementById("week-refresh-btn")?.addEventListener("click", () => {
+    setTimeout(wireAssignButtons, 250);
+  });
+
+  const rosterRoot = document.body;
+  const obs = new MutationObserver(() => wireAssignButtons());
+  obs.observe(rosterRoot, { childList: true, subtree: true });
 </script>
 
 <!-- 4️⃣ Microdose kerfið þitt -->
