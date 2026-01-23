@@ -274,6 +274,12 @@ async function loadPlayersForTeam(teamId) {
   return loadPlayers(currentTeamId);
 }
 
+// reload roster when active team changes
+window.addEventListener("active-team-changed", (e) => {
+  const t = e?.detail?.teamId || getTeamId();
+  if (t) loadPlayersForTeam(t);
+});
+
 async function loadPlayers(teamId) {
   const status = byId(IDS.status);
   if (!status) return;

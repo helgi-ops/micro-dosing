@@ -4788,6 +4788,26 @@
 <script type="module">
   import { supabase } from "./assets/dataClient.js";
 
+  const ACTIVE_TEAM_KEY = "active-team-id";
+
+  function getTeamFromUrl() {
+    return new URL(window.location.href).searchParams.get("team");
+  }
+
+  function setTeamInUrl(teamId) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("team", teamId);
+    history.replaceState({}, document.title, url.toString());
+  }
+
+  function getTeamFromStorage() {
+    return localStorage.getItem(ACTIVE_TEAM_KEY);
+  }
+
+  function setTeamInStorage(teamId) {
+    localStorage.setItem(ACTIVE_TEAM_KEY, teamId);
+  }
+
   async function requireSession() {
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
@@ -4795,34 +4815,74 @@
     return data.session;
   }
 
- async function getForcedTeamId() {
-  const url = new URL(window.location.href);
-  const teamIdFromUrl = url.searchParams.get("team");
-  if (teamIdFromUrl) return teamIdFromUrl;
+  async function loadMyTeams(session) {
+    const { data, error } = await supabase
+      .from("team_members")
+      .select("team_id, teams:team_id (id, name)")
+      .eq("user_id", session.user.id);
 
-  // Fallback: pick first team user belongs to
-  const { data, error } = await supabase
-    .from("team_members")
-    .select("team_id")
-    .limit(1)
-    .single();
+    if (error) throw error;
 
-  if (error || !data?.team_id) {
-    throw new Error("No team found for this user");
+    return (data || []).map(r => ({
+      id: r.team_id,
+      name: r.teams?.name || r.team_id
+    }));
   }
-  url.searchParams.set("team", data.team_id);
-  history.replaceState({}, document.title, url.toString());
 
-  return data.team_id;
-}
+  async function resolveActiveTeamId(session) {
+    const fromUrl = getTeamFromUrl();
+    if (fromUrl) {
+      setTeamInStorage(fromUrl);
+      return fromUrl;
+    }
+
+    const fromStorage = getTeamFromStorage();
+    if (fromStorage) return fromStorage;
+
+    const teams = await loadMyTeams(session);
+    const first = teams[0]?.id || null;
+    if (first) setTeamInStorage(first);
+    return first;
+  }
+
+  function populateTeamSelect(teams, activeTeamId) {
+    const sel = document.getElementById("teamSelectTopbar");
+    if (!sel) return;
+
+    sel.innerHTML = teams.map(t => {
+      const selected = t.id === activeTeamId ? "selected" : "";
+      return `<option value="${t.id}" ${selected}>${t.name}</option>`;
+    }).join("");
+  }
+
+  async function onTeamChanged(newTeamId) {
+    if (!newTeamId) return;
+    setTeamInStorage(newTeamId);
+    setTeamInUrl(newTeamId);
+    window.weekBuilderState = window.weekBuilderState || {};
+    window.weekBuilderState.teamId = newTeamId;
+    window.dispatchEvent(new CustomEvent("active-team-changed", { detail: { teamId: newTeamId } }));
+  }
+
   async function initCoach() {
     const session = await requireSession();
-    const teamId = await getForcedTeamId();
+    const teams = await loadMyTeams(session);
+    const activeTeamId = await resolveActiveTeamId(session);
+
+    if (!activeTeamId) throw new Error("No team available for this user.");
+    if (!getTeamFromUrl()) setTeamInUrl(activeTeamId);
+
+    populateTeamSelect(teams, activeTeamId);
+    const sel = document.getElementById("teamSelectTopbar");
+    if (sel) {
+      sel.addEventListener("change", (e) => onTeamChanged(e.target.value));
+    }
 
     window.weekBuilderState = window.weekBuilderState || {};
-    window.weekBuilderState.teamId = teamId;
+    window.weekBuilderState.teamId = activeTeamId;
 
-    console.log("Coach init ok", { user: session.user.id, teamId });
+    console.log("Coach init ok", { user: session.user.id, teamId: activeTeamId });
+    window.dispatchEvent(new CustomEvent("active-team-changed", { detail: { teamId: activeTeamId } }));
   }
 
   initCoach().catch(err => console.error("initCoach error", err));
