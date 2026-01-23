@@ -4795,13 +4795,26 @@
     return data.session;
   }
 
-  async function getForcedTeamId() {
-    const url = new URL(window.location.href);
-    const teamId = url.searchParams.get("team");
-    if (!teamId) throw new Error("Missing ?team=<uuid> in URL");
-    return teamId;
-  }
+ async function getForcedTeamId() {
+  const url = new URL(window.location.href);
+  const teamIdFromUrl = url.searchParams.get("team");
+  if (teamIdFromUrl) return teamIdFromUrl;
 
+  // Fallback: pick first team user belongs to
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("team_id")
+    .limit(1)
+    .single();
+
+  if (error || !data?.team_id) {
+    throw new Error("No team found for this user");
+  }
+  url.searchParams.set("team", data.team_id);
+  history.replaceState({}, document.title, url.toString());
+
+  return data.team_id;
+}
   async function initCoach() {
     const session = await requireSession();
     const teamId = await getForcedTeamId();
