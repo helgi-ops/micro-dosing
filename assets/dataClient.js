@@ -1220,6 +1220,19 @@ export async function waitForAuthReady() {
   return __authReadyPromise;
 }
 
+// --- Auth ready promise (waits for SDK init safely) ---
+window.__authReady =
+  window.__authReady ||
+  new Promise((resolve) => {
+    supabase.auth.onAuthStateChange((_event, session) => {
+      resolve(session);
+    });
+  });
+
+export async function waitForAuthReadySafe() {
+  return window.__authReady;
+}
+
 // expose for non-module scripts (modals, legacy code)
 window.supabase = supabase;
 window.api = window.api || {};

@@ -1,5 +1,5 @@
 // assets/app-auth.js
-import { api, supabase, waitForAuthReady, getCachedSession, listMyTeams } from "./dataClient.js";
+import { api, supabase, waitForAuthReadySafe, getCachedSession, listMyTeams } from "./dataClient.js";
 
 function el(id) { return document.getElementById(id); }
 
@@ -43,18 +43,8 @@ export async function requireSessionOrRedirect() {
 }
 
 async function ensureSessionOrRedirect() {
-  await waitForAuthReady?.();
-  let session = getCachedSession?.();
-  if (session) return session;
-  const start = Date.now();
-  while (Date.now() - start < 2000) {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) break;
-    session = data?.session;
-    if (session) return session;
-    await new Promise(r => setTimeout(r, 150));
-  }
-  return null; // let outer guards handle redirect
+  const session = await waitForAuthReadySafe();
+  return session || null;
 }
 
 let __loadingTeams = false;
@@ -64,7 +54,7 @@ async function loadTeams() {
   __loadingTeams = true;
 
   try {
-    const session = await ensureSessionOrRedirect();
+    const session = await waitForAuthReadySafe();
     if (!session) {
       const statusLine = document.getElementById("teamStatusLine");
       if (statusLine) statusLine.textContent = "Lið: — (no session)";
