@@ -18,7 +18,6 @@ const _supabase =
       autoRefreshToken: true,
       detectSessionInUrl: true,
       storage: window.localStorage,
-      storageKey: "coach-dashboard-auth"
     }
   }));
 
