@@ -193,6 +193,43 @@ export const api = {
     if (error) throw error;
     return { assignedCount: data?.length || 0, data };
   },
+
+  async listPublishedWeeks(teamId) {
+    if (!teamId) throw new Error("teamId required");
+    const { data, error } = await supabase
+      .from("weeks")
+      .select("id, team_id, week_number, title, start_date, end_date, status")
+      .eq("team_id", teamId)
+      .in("status", ["published", "active", "assigned"])
+      .order("week_number", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async listMyAssignedWeeks() {
+    const { data: sess } = await supabase.auth.getSession();
+    const userId = sess?.session?.user?.id;
+    if (!userId) throw new Error("Not signed in");
+
+    const { data: player, error: pErr } = await supabase
+      .from("players")
+      .select("id")
+      .eq("auth_user_id", userId)
+      .maybeSingle();
+    if (pErr) throw pErr;
+    if (!player?.id) return [];
+
+    const { data, error } = await supabase
+      .from("week_assignments")
+      .select(
+        "id, status, assigned_at, week_id, weeks:week_id (id, team_id, week_number, title, start_date, end_date, status)"
+      )
+      .eq("player_id", player.id)
+      .order("assigned_at", { ascending: false })
+      .limit(25);
+    if (error) throw error;
+    return data || [];
+  },
 }; // end api
 
 // ===== Named export shims (keep legacy imports working) =====
@@ -210,6 +247,14 @@ export function buildPlayerLink(playerId) {
 export async function markDayDone(payload) {
   if (api && typeof api.markDayDone === "function") return api.markDayDone(payload);
   return { ok: true, skipped: true };
+}
+
+export async function listPublishedWeeks(teamId) {
+  return api.listPublishedWeeks(teamId);
+}
+
+export async function listMyAssignedWeeks() {
+  return api.listMyAssignedWeeks();
 }
 
 // ===== Legacy named exports (shim) =====
