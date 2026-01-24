@@ -1,6 +1,9 @@
 import { supabase, waitForAuthReady, waitForAuthReadySafe, getCachedSession } from "./dataClient.js";
 import { routeFromLogin } from "./authGuard.js";
 
+// Base URL that works both on localhost and Netlify subpaths
+const baseUrl = new URL("./", window.location.href).toString();
+
 const $ = (id) => document.getElementById(id);
 const LOGIN_URL = baseUrl + "index.html";
 const RESET_URL = baseUrl + "reset-password.html";
@@ -102,10 +105,9 @@ async function init() {
 
       setStatus("Signed in");
       setMsg("Success. Routing…", "ok");
-      const sess = await waitForAuthReadySafe();
+      await waitForAuthReadySafe();
       await goNextOrRole();
-      if (sess) await routeFromLogin();
-      await onLoginSuccess();
+      await routeFromLogin();
     } catch (e) {
       setStatus("Error");
       setMsg(e?.message || String(e), "err");
