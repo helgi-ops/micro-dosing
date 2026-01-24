@@ -85,29 +85,30 @@ async function loadTeams() {
     }
 
     // Build dropdown
-    const placeholder = `<option value="">— Veldu lið —</option>`;
-    if (topSel) {
-      const opts = teams
-        .map(t => {
-          const id = t.team_id || t.id;
-          const name = t.team?.name || t.name || t.team_id || id;
-          return `<option value="${id}">${name}</option>`;
-        })
-        .join("");
-      topSel.innerHTML = placeholder + opts;
-    }
+  const placeholder = `<option value="">— Veldu lið —</option>`;
+  if (topSel) {
+    const opts = teams
+      .map(t => {
+        const id = t.team_id || t.id;
+        const name = t.team?.name || t.name || t.team_id || id;
+        return `<option value="${id}">${name}</option>`;
+      })
+      .join("");
+    topSel.innerHTML = placeholder + opts;
+  }
 
-    // ✅ Always select a valid team: stored if valid, else FIRST
-    const stored =
+  // ✅ Always select a valid team: stored if valid, else FIRST
+  const stored =
+      localStorage.getItem("active-team-id") ||
       localStorage.getItem("active_team_id") ||
       localStorage.getItem("selectedTeamId") ||
       localStorage.getItem("selected_team_id") ||
       "";
 
-    let selected = "";
-    if (stored && teams.some(t => (t.team_id || t.id) === stored)) {
-      selected = stored;
-    } else {
+  let selected = "";
+  if (stored && teams.some(t => (t.team_id || t.id) === stored)) {
+    selected = stored;
+  } else {
       selected = teams[0].team_id || teams[0].id; // <-- mikilvægasta línan
     }
 

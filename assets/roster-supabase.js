@@ -24,13 +24,30 @@ const IDS = {
 function byId(id) { return document.getElementById(id); }
 
 function getTeamId() {
-  return (
-    window.__selectedTeamId ||
+  const urlTeam = new URL(window.location.href).searchParams.get("team");
+  const stored =
+    localStorage.getItem("active-team-id") ||
     localStorage.getItem("active_team_id") ||
-    localStorage.getItem("selectedTeamId") ||
     localStorage.getItem("selected_team_id") ||
-    ""
-  );
+    localStorage.getItem("selectedTeamId") ||
+    "";
+
+  return urlTeam || window.__selectedTeamId || stored || "";
+}
+
+function setActiveTeamEverywhere(teamId) {
+  if (!teamId) return;
+  window.__selectedTeamId = teamId;
+  try { localStorage.setItem("active-team-id", teamId); } catch (_) {}
+
+  // Sync URL so refresh/share keeps team
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("team") !== teamId) {
+      url.searchParams.set("team", teamId);
+      history.replaceState({}, document.title, url.toString());
+    }
+  } catch (_) {}
 }
 
 let currentTeamId = getTeamId();
@@ -267,10 +284,20 @@ async function loadPlayersForTeam(teamId) {
   return loadPlayers(currentTeamId);
 }
 
-// reload roster when active team changes
+// reload roster when active team changes (supports both event names)
 window.addEventListener("active-team-changed", (e) => {
   const t = e?.detail?.teamId || getTeamId();
-  if (t) loadPlayersForTeam(t);
+  if (t) {
+    setActiveTeamEverywhere(t);
+    loadPlayersForTeam(t);
+  }
+});
+window.addEventListener("team:changed", (e) => {
+  const t = e?.detail?.teamId || getTeamId();
+  if (t) {
+    setActiveTeamEverywhere(t);
+    loadPlayersForTeam(t);
+  }
 });
 
 async function loadPlayers(teamId) {
