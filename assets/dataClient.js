@@ -858,33 +858,41 @@ export const api = {
     return { data: w, error: null };
   },
 
-  async assignWeekToPlayers(weekId, playerIds) {
-    if (!weekId || !(playerIds || []).length) throw new Error("weekId and playerIds required");
-    const ids = playerIds.filter(Boolean);
-    if (!ids.length) throw new Error("playerIds required");
+  afunction getSupabase() {
+  return window.supabase || window.api?.supabase || null;
+}
 
-    // deactivate old assignments
-    const { error: updErr } = await supabase
-      .from("player_weeks")
-      .update({ is_active: false })
-      .in("player_id", ids)
-      .eq("is_active", true);
-    if (updErr) throw updErr;
+async function assignWeekToPlayers(weekId, playerIds) {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Supabase client not ready yet");
 
-    const rows = ids.map(pid => ({
-      player_id: pid,
-      week_id: weekId,
-      is_active: true
-    }));
+  if (!weekId || !(playerIds || []).length) throw new Error("weekId and playerIds required");
+  const ids = playerIds.filter(Boolean);
+  if (!ids.length) throw new Error("playerIds required");
 
-    const { data, error } = await supabase
-      .from("player_weeks")
-      .insert(rows)
-      .select();
-    if (error) throw error;
-    return { assignedCount: data?.length || 0, data };
-  }
-};
+  // deactivate old assignments (one active week per player)
+  const { error: updErr } = await supabase
+    .from("player_weeks")
+    .update({ is_active: false })
+    .in("player_id", ids)
+    .eq("is_active", true);
+
+  if (updErr) throw updErr;
+
+  const rows = ids.map(pid => ({
+    player_id: pid,
+    week_id: weekId,
+    is_active: true
+  }));
+
+  const { data, error } = await supabase
+    .from("player_weeks")
+    .insert(rows)
+    .select();
+
+  if (error) throw error;
+  return { assignedCount: data?.length || 0, data };
+}
 
 // ------------------------- ATHLETE: MY PLAN -------------------------
 

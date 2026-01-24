@@ -5433,6 +5433,86 @@
     import { requireAuth } from "./assets/guard.js";
     await requireAuth("coach");
   </script>
+  <script type="module">
+    import { requireAuth } from "./assets/guard.js";
+    await requireAuth("coach");
+
+    // 2) ná í supabase/api (VELDU EINA af þessum leiðum)
+    // A) Ef þú ert með dataClient.js sem setur window.api:
+    const api = window.api || window?.api?.supabase || null;
+
+    // B) Ef þú ert með window.supabase:
+    const supabase = window.supabase || window?.api?.supabase || null;
+
+    if (!supabase && !(api && api.supabase)) {
+      console.error("No supabase client found on window. Make sure dataClient loads first.");
+    }
+
+    const client = (api && api.supabase) || supabase;
+
+    const weekSelect = document.getElementById("week-select");
+    const assignList = document.getElementById("assign-week-list");
+    const statusEl = document.getElementById("assign-week-status");
+
+    function setAssignStatus(msg, isError = false) {
+      if (!statusEl) return;
+      statusEl.textContent = msg || "";
+      statusEl.style.color = isError ? "crimson" : "";
+    }
+
+    async function upsertWeekAssignment(playerId, weekId) {
+      const row = {
+        player_id: playerId,
+        week_id: weekId,
+        status: "assigned",
+        assigned_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await client
+        .from("week_assignments")
+        .upsert(row, { onConflict: "player_id" })
+        .select("id, player_id, week_id, assigned_at")
+        .single();
+
+      if (error) throw error;
+      return data;
+    }
+
+    // Event delegation: virkar þegar listinn er renderaður eftir á
+    assignList?.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".assign-week-btn");
+      if (!btn) return;
+
+      try {
+        const weekId = weekSelect?.value;
+        const playerId =
+          btn.dataset.playerId ||
+          btn.getAttribute("data-player-id") ||
+          btn.dataset.player;
+
+        if (!weekId) return setAssignStatus("Veldu viku fyrst í dropdown.", true);
+        if (!playerId) return setAssignStatus("Vantar player id á takka.", true);
+
+        btn.disabled = true;
+        const prev = btn.textContent;
+        btn.textContent = "Assigning…";
+        setAssignStatus("");
+
+        const res = await upsertWeekAssignment(playerId, weekId);
+        console.log("[assign] OK", res);
+
+        btn.textContent = "Assigned ✅";
+        setAssignStatus("Vika úthlutuð ✅");
+
+        setTimeout(() => (btn.textContent = prev), 1200);
+        btn.disabled = false;
+      } catch (err) {
+        console.error("[assign] FAIL", err);
+        setAssignStatus(err?.message || "Assign failed", true);
+        try { btn.disabled = false; } catch {}
+      }
+    });
+  </script>
   <script type="module" src="./assets/microdose-ui.js"></script>
 
 
