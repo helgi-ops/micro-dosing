@@ -1,19 +1,13 @@
 import { supabase, waitForAuthReady, waitForAuthReadySafe, getCachedSession } from "./dataClient.js";
+import { routeFromLogin } from "./authGuard.js";
 
 const $ = (id) => document.getElementById(id);
-const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
 const LOGIN_URL = baseUrl + "index.html";
 const RESET_URL = baseUrl + "reset-password.html";
 
-function goNext() {
-  const params = new URLSearchParams(location.search);
-  const next = params.get("next");
-  location.replace(next ? decodeURIComponent(next) : "/coach.html");
-}
-
 async function onLoginSuccess() {
   await new Promise(r => setTimeout(r, 50));
-  goNext();
+  routeFromLogin();
 }
 
 function setStatus(t) { $("status").textContent = t || ""; }
@@ -57,35 +51,6 @@ async function goNextOrRole() {
   }
 }
 
-async function routeUser(session) {
-  const userId = session?.user?.id;
-  if (!userId) return;
-
-  // coach?
-  const { data: tm } = await supabase
-    .from("team_members")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (tm) {
-    window.location.href = baseUrl + "coach.html";
-    return;
-  }
-
-  const { data: pl } = await supabase
-    .from("players")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (pl) {
-    window.location.href = baseUrl + "player.html";
-    return;
-  }
-
-  setMsg("No role assigned. Contact your coach.", "err");
-  $("signOutBtn").style.display = "inline-block";
-}
-
 async function init() {
   setStatus("Checking session…");
   showResetMode(false);
@@ -95,7 +60,7 @@ async function init() {
     const sess = await waitForAuthReadySafe();
     if (sess) {
       setStatus("Signed in");
-      goNext();
+      routeFromLogin();
       return;
     }
   } catch (_) {}
@@ -139,7 +104,7 @@ async function init() {
       setMsg("Success. Routing…", "ok");
       const sess = await waitForAuthReadySafe();
       await goNextOrRole();
-      if (sess) await routeUser(sess);
+      if (sess) await routeFromLogin();
       await onLoginSuccess();
     } catch (e) {
       setStatus("Error");
@@ -261,7 +226,7 @@ async function init() {
     // Only auto-route if explicit ?next= is present
     if (getNext()) {
       await goNextOrRole();
-      await routeUser(session);
+      await routeFromLogin();
     }
   } else if ($("status").textContent === "Checking session…") {
     setStatus("Not signed in");
@@ -274,7 +239,7 @@ async function init() {
       setStatus("Signed in");
       if (event === "SIGNED_IN") {
         await goNextOrRole();
-        await routeUser(sess);
+        await routeFromLogin();
         await onLoginSuccess();
       }
     } else {

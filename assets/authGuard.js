@@ -1,26 +1,59 @@
 import { supabase, waitForAuthReadySafe } from "./dataClient.js";
 
-export async function requireSession({ allowDebug = true } = {}) {
-  const params = new URLSearchParams(location.search);
-  const debug = allowDebug && params.get("debug") === "1";
+// Resolve the user's role deterministically from Supabase
+export async function resolveRole() {
+  try {
+    const sess = await waitForAuthReadySafe();
+    const session = sess || (await supabase.auth.getSession()).data?.session || null;
+    if (!session?.user?.id) return { role: "anonymous" };
 
-  const session = await waitForAuthReadySafe();
-  if (session) return { ok: true, session, debug };
+    const userId = session.user.id;
 
-  if (!debug) {
-    const next = encodeURIComponent(location.pathname + location.search);
-    location.replace(`/index.html?next=${next}`);
-  } else {
-    console.warn("DEBUG: redirect to login blocked (no session)");
+    const { data: playerRow, error: playerErr } = await supabase
+      .from("players")
+      .select("*")
+      .eq("auth_user_id", userId)
+      .maybeSingle();
+    if (playerErr) console.warn("[resolveRole] players error", playerErr);
+    if (playerRow) return { role: "player", player: playerRow, session };
+
+    const { data: tmRows, error: tmErr } = await supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", userId);
+    if (tmErr) console.warn("[resolveRole] team_members error", tmErr);
+    if (tmRows && tmRows.length) {
+      return { role: "coach", teamIds: tmRows.map((r) => r.team_id), session };
+    }
+
+    return { role: "unassigned", session };
+  } catch (e) {
+    console.error("[resolveRole] fatal", e);
+    return { role: "anonymous" };
   }
-  return { ok: false, session: null, debug };
 }
 
+// Called on index.html to route after login
 export async function routeFromLogin() {
-  const session = await waitForAuthReadySafe();
-  if (!session) return;
+  const sess = await waitForAuthReadySafe();
+  if (!sess) {
+    console.warn("[routeFromLogin] not signed in");
+    return;
+  }
 
-  const params = new URLSearchParams(location.search);
-  const next = params.get("next");
-  location.replace(next ? decodeURIComponent(next) : "/coach.html");
+  const result = await resolveRole();
+  console.log("[routeFromLogin] role", result.role);
+
+  if (result.role === "player") {
+    location.href = "/player.html";
+    return;
+  }
+  if (result.role === "coach") {
+    location.href = "/coach.html";
+    return;
+  }
+
+  const msgEl = document.getElementById("msg");
+  if (msgEl) msgEl.textContent = "Account is not assigned. Contact admin.";
+  console.warn("[routeFromLogin] Account unassigned");
 }

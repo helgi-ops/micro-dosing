@@ -5574,8 +5574,8 @@
 
 <!-- 4️⃣ Microdose kerfið þitt -->
   <script type="module">
-    import { requireAuth } from "./assets/guard.js";
-    await requireAuth("coach");
+    import { requireRoleOrRedirect } from "./assets/app-auth.js";
+    await requireRoleOrRedirect("coach");
 
     const client = window?.api?.supabase || window?.supabase || window?.api || null;
 

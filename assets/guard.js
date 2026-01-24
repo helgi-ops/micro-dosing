@@ -1,51 +1,33 @@
-import { supabase } from "./supabaseClient.js";
-import { waitForAuthReadySafe } from "./dataClient.js";
+import { supabase, waitForAuthReadySafe } from "./dataClient.js";
+import { resolveRole } from "./authGuard.js";
 
 const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
-export const ROUTES = {
-  login: baseUrl + "index.html",
-};
+const LOGIN_ROUTE = "/index.html";
+const COACH_ROUTE = "/coach.html";
+const PLAYER_ROUTE = "/player.html";
 
 export async function requireAuth(requiredRole) {
   const session = await waitForAuthReadySafe();
+  const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+
   if (!session?.user?.id) {
-    window.location.href = ROUTES.login;
+    window.location.href = `${LOGIN_ROUTE}?next=${currentUrl}`;
     return null;
   }
 
-  return session;
-}
+  const resolved = await resolveRole();
+  console.log("[auth] requireAuth", { requiredRole, role: resolved.role });
 
-// Convenience to support existing code expecting multi-role array
-export async function requireRole(roles = []) {
-  const session = await waitForAuthReadySafe();
-  if (!session?.user?.id) {
-    window.location.href = ROUTES.login;
-    return { ok: false };
+  if (requiredRole === "coach" && resolved.role !== "coach") {
+    if (resolved.role === "player") window.location.href = PLAYER_ROUTE;
+    else window.location.href = `${LOGIN_ROUTE}?next=${currentUrl}`;
+    return null;
   }
-  const userId = session.user.id;
-
-  const wantsCoach = roles.includes("coach") || roles.includes("admin");
-  const wantsPlayer = roles.includes("player");
-
-  if (wantsCoach) {
-    const { data: tm } = await supabase
-      .from("team_members")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (tm) return { ok: true, role: "coach", session };
+  if (requiredRole === "player" && resolved.role !== "player") {
+    if (resolved.role === "coach") window.location.href = COACH_ROUTE;
+    else window.location.href = `${LOGIN_ROUTE}?next=${currentUrl}`;
+    return null;
   }
 
-  if (wantsPlayer) {
-    const { data: pl } = await supabase
-      .from("players")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (pl) return { ok: true, role: "player", session };
-  }
-
-  window.location.href = ROUTES.login;
-  return { ok: false };
+  return resolved;
 }

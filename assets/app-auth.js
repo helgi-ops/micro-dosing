@@ -1,5 +1,6 @@
 // assets/app-auth.js
 import { api, supabase, waitForAuthReadySafe, getCachedSession, listMyTeams } from "./dataClient.js";
+import { resolveRole } from "./authGuard.js";
 
 function el(id) { return document.getElementById(id); }
 
@@ -34,17 +35,32 @@ function setActiveTeam(teamId, label) {
 }
 
 export async function requireSessionOrRedirect() {
-  await waitForAuthReady?.();
-  let { data, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  if (data?.session) return data.session;
-  window.location.href = "index.html";
+  const session = await waitForAuthReadySafe();
+  if (session) return session;
+  window.location.href = "/index.html";
   return null;
 }
 
-async function ensureSessionOrRedirect() {
-  const session = await waitForAuthReadySafe();
-  return session || null;
+export async function requireRoleOrRedirect(expectedRole) {
+  const session = await requireSessionOrRedirect();
+  if (!session) return null;
+
+  const resolved = await resolveRole();
+  const role = resolved.role;
+  console.log("[requireRoleOrRedirect]", { expectedRole, role });
+
+  if (expectedRole === "coach" && role !== "coach") {
+    if (role === "player") window.location.href = "/player.html";
+    else window.location.href = "/index.html";
+    return null;
+  }
+  if (expectedRole === "player" && role !== "player") {
+    if (role === "coach") window.location.href = "/coach.html";
+    else window.location.href = "/index.html";
+    return null;
+  }
+
+  return resolved;
 }
 
 let __loadingTeams = false;

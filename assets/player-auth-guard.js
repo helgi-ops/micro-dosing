@@ -1,15 +1,15 @@
-import { supabase } from "./supabaseClient.js";
+import { supabase, waitForAuthReadySafe } from "./dataClient.js";
 
+// Session-first: if not signed in, allow token view; otherwise redirect to login
 export async function requirePlayerAuth() {
-  const { data: { session } = {} } = await supabase.auth.getSession();
-  if (session) return session;
+  const sess = await waitForAuthReadySafe();
+  if (sess?.user) return sess;
 
-  const token = new URLSearchParams(location.search).get("t") || "";
-  if (!token) {
-    location.replace("/index.html");
-    return null;
-  }
+  const qs = new URLSearchParams(location.search);
+  const token = qs.get("t") || qs.get("token") || "";
+  if (token) return null; // allow token-based readonly view
 
-  // Token-based view is allowed; sessionless but token present
+  const next = encodeURIComponent(location.pathname + location.search);
+  location.replace(`/index.html?next=${next}`);
   return null;
 }
