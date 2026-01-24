@@ -1148,6 +1148,7 @@
           <option value="contrast-custom-4day">Contrast – Custom 4 dagar</option>
           <option value="iso-contrast-3day">Iso Contrast (3 dagar)</option>
           <option value="iso-contrast-4day">Iso Contrast (4 dagar)</option>
+          <option value="singleleg-5day">Single-leg focused (5 dagar)</option>
         </select>
       </label>
 
@@ -1317,15 +1318,15 @@
     <div class="two-col">
       <label>
         Nafn á programi:
-        <input id="builderName" type="text" placeholder="T.d. Builder Program" />
+        <input id="builderName" type="text" placeholder="Single-leg focused (5 dagar)" value="Single-leg focused (5 dagar)" />
       </label>
       <label>
         Dagar:
         <select id="builderDays">
           <option value="2">2</option>
-          <option value="3" selected>3</option>
+          <option value="3">3</option>
           <option value="4">4</option>
-          <option value="5">5</option>
+          <option value="5" selected>5</option>
         </select>
       </label>
       <label>
@@ -1344,6 +1345,9 @@
   </section>
 
   <div id="builderPrograms" class="no-print"></div>
+  <div class="no-print" style="margin:14px 0;">
+    <button id="exportPdf" type="button" style="padding:0.7rem 1.2rem;">Prenta</button>
+  </div>
 
   <div class="print-only print-name">
     <strong>Nafn:</strong> <span id="printNameValue"></span>
@@ -1927,6 +1931,106 @@
         </tr>
       </thead>
       <tbody id="lower3-day3-body"></tbody>
+    </table>
+  </section>
+
+  <section data-program="singleleg-schedule">
+    <h2>Single-leg focused – 5 dagar (20–25 mín)</h2>
+    <p>Létt og markviss vika sem setur vinstri fókus og einhliða stöðugleika í forgang. Markmið: vinna í 5 stuttum lotum (20–25 mín), RPE ~6–7, hvíld 45–75 sek milli setta. Þetta er read-only template — stilltu lóð/erfiðleika eftir getu og sársaukaþoli.</p>
+  </section>
+
+  <section data-program="singleleg-day1">
+    <h2>Dagur 1 – Glute &amp; Hamstring (vinstri fókus)</h2>
+    <table class="program-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Pattern</th>
+          <th>Exercise</th>
+          <th>Reps</th>
+          <th>Sets</th>
+          <th>Rounds</th>
+          <th>Rest between sets</th>
+          <th>Rest between rounds</th>
+        </tr>
+      </thead>
+      <tbody id="singleleg-day1-body"></tbody>
+    </table>
+  </section>
+
+  <section data-program="singleleg-day2">
+    <h2>Dagur 2 – Core &amp; miðjusvæði</h2>
+    <table class="program-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Pattern</th>
+          <th>Exercise</th>
+          <th>Reps</th>
+          <th>Sets</th>
+          <th>Rounds</th>
+          <th>Rest between sets</th>
+          <th>Rest between rounds</th>
+        </tr>
+      </thead>
+      <tbody id="singleleg-day2-body"></tbody>
+    </table>
+  </section>
+
+  <section data-program="singleleg-day3">
+    <h2>Dagur 3 – Glute + adductor</h2>
+    <table class="program-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Pattern</th>
+          <th>Exercise</th>
+          <th>Reps</th>
+          <th>Sets</th>
+          <th>Rounds</th>
+          <th>Rest between sets</th>
+          <th>Rest between rounds</th>
+        </tr>
+      </thead>
+      <tbody id="singleleg-day3-body"></tbody>
+    </table>
+  </section>
+
+  <section data-program="singleleg-day4">
+    <h2>Dagur 4 – Core + unilateral stability</h2>
+    <table class="program-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Pattern</th>
+          <th>Exercise</th>
+          <th>Reps</th>
+          <th>Sets</th>
+          <th>Rounds</th>
+          <th>Rest between sets</th>
+          <th>Rest between rounds</th>
+        </tr>
+      </thead>
+      <tbody id="singleleg-day4-body"></tbody>
+    </table>
+  </section>
+
+  <section data-program="singleleg-day5">
+    <h2>Dagur 5 – Low-load full body</h2>
+    <table class="program-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Pattern</th>
+          <th>Exercise</th>
+          <th>Reps</th>
+          <th>Sets</th>
+          <th>Rounds</th>
+          <th>Rest between sets</th>
+          <th>Rest between rounds</th>
+        </tr>
+      </thead>
+      <tbody id="singleleg-day5-body"></tbody>
     </table>
   </section>
 
@@ -2926,7 +3030,8 @@
       'contrast-2day': [2],
       'contrast-custom-4day': [4],
       'iso-contrast-3day': [3],
-      'iso-contrast-4day': [4]
+      'iso-contrast-4day': [4],
+      'singleleg-5day': [5]
     };
     const mostUsedExercises = {
       squat: ['Back Squat', 'Front Squat', 'Bulgarian Split Squat (each leg)', 'Leg press', 'Goblet squat'],
@@ -3225,6 +3330,38 @@
         { id: 'D1', pattern: 'hinge', exercise: 'Standing calf raise', reps: '15', sets: '3', rounds: '', restSets: '60s', restRounds: '' },
         { id: 'Fin1', pattern: 'core', exercise: 'Bird dog (pause)', reps: '8/side', sets: '2', rounds: '', restSets: '30–45s', restRounds: '' },
         { id: 'Fin2', pattern: 'core', exercise: 'Hollow hold', reps: '20–30s', sets: '2', rounds: '', restSets: '45s', restRounds: '' }
+      ],
+      "singleleg-day1": [
+        { id: 'A1', pattern: 'hinge', exercise: 'Single-leg hip thrust (vinstri fókus)', reps: '8', sets: '3', rounds: '', restSets: '45–75s', restRounds: '' },
+        { id: 'A2', pattern: 'hinge', exercise: 'Single-leg hip thrust (hægri)', reps: '6', sets: '2', rounds: '', restSets: '45–75s', restRounds: '' },
+        { id: 'B1', pattern: 'squat', exercise: 'Bulgarian split squat (vinstri fram)', reps: '6–8', sets: '3', rounds: '', restSets: '60–75s', restRounds: '' },
+        { id: 'C1', pattern: 'hinge', exercise: 'Single-leg RDL (vinstri)', reps: '6–8', sets: '3', rounds: '', restSets: '60–75s', restRounds: '' },
+        { id: 'D1', pattern: 'hinge', exercise: 'Hamstring slide curl (bilateral, 4s ecc)', reps: '10', sets: '2', rounds: '', restSets: '60s', restRounds: '' }
+      ],
+      "singleleg-day2": [
+        { id: 'A1', pattern: 'core', exercise: 'Dead bug (loaded)', reps: '8/side', sets: '3', rounds: '', restSets: '45–60s', restRounds: '' },
+        { id: 'A2', pattern: 'core', exercise: 'Side plank (vinstri)', reps: '40s', sets: '3', rounds: '', restSets: '45s', restRounds: '' },
+        { id: 'A3', pattern: 'core', exercise: 'Side plank (hægri)', reps: '25s', sets: '2', rounds: '', restSets: '45s', restRounds: '' },
+        { id: 'B1', pattern: 'core', exercise: 'Pallof press (half-kneeling)', reps: '10/side', sets: '3', rounds: '', restSets: '45–60s', restRounds: '' },
+        { id: 'C1', pattern: 'core', exercise: 'Bear crawl (slow)', reps: '20–30s', sets: '3', rounds: '', restSets: '45–60s', restRounds: '' }
+      ],
+      "singleleg-day3": [
+        { id: 'A1', pattern: 'squat', exercise: 'Step-up (vinstri)', reps: '8', sets: '3', rounds: '', restSets: '60–75s', restRounds: '' },
+        { id: 'A2', pattern: 'hinge', exercise: 'Standing cable hip extension (vinstri)', reps: '12', sets: '3', rounds: '', restSets: '45s', restRounds: '' },
+        { id: 'B1', pattern: 'core', exercise: 'Copenhagen plank (short lever)', reps: '20–30s/side', sets: '3', rounds: '', restSets: '45–60s', restRounds: '' },
+        { id: 'B2', pattern: 'core', exercise: 'Isometric adduction (bolti/púði)', reps: '40s @60–70%', sets: '3', rounds: '', restSets: '60s', restRounds: '' }
+      ],
+      "singleleg-day4": [
+        { id: 'A1', pattern: 'squat', exercise: 'Split squat ISO hold (vinstri)', reps: '30–40s', sets: '3', rounds: '', restSets: '60s', restRounds: '' },
+        { id: 'A2', pattern: 'core', exercise: 'Single-leg balance + reach (vinstri)', reps: '6 reach', sets: '3', rounds: '', restSets: '45s', restRounds: '' },
+        { id: 'A3', pattern: 'core', exercise: 'Side-lying hip abduction (vinstri)', reps: '12 (slow)', sets: '3', rounds: '', restSets: '45s', restRounds: '' },
+        { id: 'A4', pattern: 'core', exercise: 'Anti-extension plank (band eða diskur)', reps: '25–35s', sets: '3', rounds: '', restSets: '45–60s', restRounds: '' }
+      ],
+      "singleleg-day5": [
+        { id: 'A1', pattern: 'squat', exercise: 'Goblet squat (controlled ROM)', reps: '8', sets: '3', rounds: '', restSets: '60–75s', restRounds: '' },
+        { id: 'A2', pattern: 'hinge', exercise: 'Single-leg bridge march (vinstri leiðandi)', reps: '10', sets: '3', rounds: '', restSets: '45–60s', restRounds: '' },
+        { id: 'A3', pattern: 'pull', exercise: 'Cable row (half-kneeling)', reps: '10/side', sets: '3', rounds: '', restSets: '60s', restRounds: '' },
+        { id: 'A4', pattern: 'conditioning', exercise: 'Bike / SkiErg (Zone 2)', reps: '5–7 mín', sets: '1', rounds: '', restSets: '', restRounds: '' }
       ],
       "hybrid-day1": [
         { id: '1a', pattern: 'conditioning', exercise: 'Run 2:00 (500m goal)', reps: '2 min', sets: '3–4', rounds: 'Triset 1', restSets: 'Smooth transitions', restRounds: '2 min after 1c' },
@@ -3885,6 +4022,8 @@
           matches = ['iso-contrast-4day-schedule', 'iso-contrast-4day-1', 'iso-contrast-4day-2', 'iso-contrast-4day-3', 'iso-contrast-4day-4'].includes(program);
         } else if (chosenCategory === 'french-iso3-pima') {
           matches = ['french-iso3-schedule', 'french-iso3-day1', 'french-iso3-day2', 'french-iso3-day3'].includes(program);
+        } else if (chosenCategory === 'singleleg-5day') {
+          matches = ['singleleg-schedule', 'singleleg-day1', 'singleleg-day2', 'singleleg-day3', 'singleleg-day4', 'singleleg-day5'].includes(program);
         } else if (chosenCategory && chosenCategory.startsWith('builder-')) {
           matches = program === chosenCategory || program.startsWith(`${chosenCategory}-day`);
         }
@@ -4386,6 +4525,11 @@
       renderRoundsTable('lower3-day1', 'lower3-day1-body');
       renderRoundsTable('lower3-day2', 'lower3-day2-body');
       renderRoundsTable('lower3-day3', 'lower3-day3-body');
+      renderRoundsTable('singleleg-day1', 'singleleg-day1-body');
+      renderRoundsTable('singleleg-day2', 'singleleg-day2-body');
+      renderRoundsTable('singleleg-day3', 'singleleg-day3-body');
+      renderRoundsTable('singleleg-day4', 'singleleg-day4-body');
+      renderRoundsTable('singleleg-day5', 'singleleg-day5-body');
       renderRoundsTable('hybrid-day1', 'hybrid-day1-body', { showRounds: false });
       renderRoundsTable('hybrid-day2', 'hybrid-day2-body', { showRounds: false });
       renderRoundsTable('hybrid-day3', 'hybrid-day3-body', { showRounds: false });
@@ -5432,32 +5576,27 @@
   <script type="module">
     import { requireAuth } from "./assets/guard.js";
     await requireAuth("coach");
-  </script>
-  <script type="module">
-    import { requireAuth } from "./assets/guard.js";
-    await requireAuth("coach");
 
-    // 2) ná í supabase/api (VELDU EINA af þessum leiðum)
-    // A) Ef þú ert með dataClient.js sem setur window.api:
-    const api = window.api || window?.api?.supabase || null;
+    const client = window?.api?.supabase || window?.supabase || window?.api || null;
 
-    // B) Ef þú ert með window.supabase:
-    const supabase = window.supabase || window?.api?.supabase || null;
+    console.log("[assign] init", {
+      hasClient: !!client,
+      hasWeekSelect: !!document.getElementById("week-select"),
+      hasAssignList: !!document.getElementById("assign-week-list"),
+    });
 
-    if (!supabase && !(api && api.supabase)) {
-      console.error("No supabase client found on window. Make sure dataClient loads first.");
+    if (!client) {
+      console.error("[assign] No supabase client found on window (window.api.supabase or window.supabase).");
     }
 
-    const client = (api && api.supabase) || supabase;
-
-    const weekSelect = document.getElementById("week-select");
-    const assignList = document.getElementById("assign-week-list");
-    const statusEl = document.getElementById("assign-week-status");
-
     function setAssignStatus(msg, isError = false) {
-      if (!statusEl) return;
-      statusEl.textContent = msg || "";
-      statusEl.style.color = isError ? "crimson" : "";
+      const el = document.getElementById("assign-week-status");
+      if (!el) {
+        if (msg) console[isError ? "error" : "log"]("[assign-status]", msg);
+        return;
+      }
+      el.textContent = msg || "";
+      el.style.color = isError ? "crimson" : "";
     }
 
     async function upsertWeekAssignment(playerId, weekId) {
@@ -5478,20 +5617,24 @@
       return data;
     }
 
-    // Event delegation: virkar þegar listinn er renderaður eftir á
-    assignList?.addEventListener("click", async (e) => {
+    // Global delegation: finnur alltaf takka, sama hvar listinn er renderaður
+    document.addEventListener("click", async (e) => {
       const btn = e.target.closest(".assign-week-btn");
       if (!btn) return;
 
+      console.log("[assign] click detected", btn);
+
       try {
-        const weekId = weekSelect?.value;
+        const weekId = document.getElementById("week-select")?.value || null;
         const playerId =
           btn.dataset.playerId ||
           btn.getAttribute("data-player-id") ||
-          btn.dataset.player;
+          btn.dataset.player ||
+          btn.getAttribute("data-player");
 
         if (!weekId) return setAssignStatus("Veldu viku fyrst í dropdown.", true);
         if (!playerId) return setAssignStatus("Vantar player id á takka.", true);
+        if (!client) return setAssignStatus("Supabase client vantar (window.api.supabase).", true);
 
         btn.disabled = true;
         const prev = btn.textContent;
@@ -5509,6 +5652,7 @@
       } catch (err) {
         console.error("[assign] FAIL", err);
         setAssignStatus(err?.message || "Assign failed", true);
+        alert(err?.message || "Assign failed — sjá console");
         try { btn.disabled = false; } catch {}
       }
     });
