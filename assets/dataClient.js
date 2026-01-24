@@ -22,9 +22,12 @@ const _supabase =
   }));
 
 export const supabase = _supabase;
-window.supabase = supabase;
-window.api = window.api || {};
-window.api.supabase = supabase;
+// HARD GUARANTEE: expose supabase client globally (legacy compatibility)
+if (typeof window !== "undefined") {
+  window.supabase = supabase;
+  window.api = window.api || {};
+  window.api.supabase = supabase;
+}
 
 // Handle magic-link hash cleanup
 if (location.hash && location.hash.includes("access_token=")) {
@@ -191,3 +194,16 @@ export const api = {
     return { assignedCount: data?.length || 0, data };
   },
 }; // end api
+
+// ===== Legacy named exports (shim) =====
+export async function listMyTeams() {
+  return api.listMyTeams();
+}
+
+export async function ensurePlayerToken(token) {
+  return api.ensurePlayerToken(token);
+}
+
+export async function getWeekDays(weekId) {
+  return api.getWeekDays(weekId);
+}
