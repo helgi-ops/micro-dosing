@@ -1,4 +1,4 @@
-import { supabase, waitForAuthReady, getCachedSession } from "./dataClient.js";
+import { supabase, waitForAuthReady, waitForAuthReadySafe, getCachedSession } from "./dataClient.js";
 
 const $ = (id) => document.getElementById(id);
 const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
@@ -92,8 +92,9 @@ async function init() {
 
   // If already signed in, move along
   try {
-    const { data } = await supabase.auth.getSession();
-    if (data?.session) {
+    const sess = await waitForAuthReadySafe();
+    if (sess) {
+      setStatus("Signed in");
       goNext();
       return;
     }
@@ -136,7 +137,7 @@ async function init() {
 
       setStatus("Signed in");
       setMsg("Success. Routing…", "ok");
-      const sess = await getSessionCached();
+      const sess = await waitForAuthReadySafe();
       await goNextOrRole();
       if (sess) await routeUser(sess);
       await onLoginSuccess();
@@ -248,7 +249,7 @@ async function init() {
   // --- Session handling after UI is wired ---
   let session = null;
   try {
-    session = await getSessionCached();
+    session = await waitForAuthReadySafe();
   } catch (e) {
     setStatus("Error");
     setMsg(e?.message || String(e), "err");
