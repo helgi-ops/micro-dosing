@@ -24,19 +24,6 @@ const IDS = {
 function byId(id) { return document.getElementById(id); }
 
 function getTeamId() {
-  // Prefer an explicit team in the URL (coach.html?team=<uuid>)
-  const urlTeam = new URLSearchParams(location.search).get("team");
-  if (urlTeam && /^[0-9a-fA-F-]{36}$/.test(urlTeam)) {
-    // keep all common caches in sync so other modules see the same team
-    window.__selectedTeamId = urlTeam;
-    try {
-      localStorage.setItem("active_team_id", urlTeam);
-      localStorage.setItem("selectedTeamId", urlTeam);
-      localStorage.setItem("selected_team_id", urlTeam);
-    } catch {}
-    return urlTeam;
-  }
-
   return (
     window.__selectedTeamId ||
     localStorage.getItem("active_team_id") ||
@@ -118,7 +105,7 @@ function ensureRosterUI() {
   }
 }
 
-function renderPlayers(players) {
+function renderPlayers(players, assignments = {}) {
   const list = byId(IDS.list);
   if (!list) return;
 
@@ -138,11 +125,17 @@ function renderPlayers(players) {
     row.className = "roster-player";
     row.dataset.playerId = p.id;
 
+    const assigned = assignments[p.id];
+    const weekLabel = assigned
+      ? (assigned.weeks?.title || (assigned.weeks?.week_number ? `Week ${assigned.weeks.week_number}` : assigned.week_id) || assigned.week_id)
+      : "—";
+
     row.innerHTML = `
       <div class="player-row">
         <div class="player-main">
           <div class="player-name">${p.first_name} ${p.last_name}</div>
           <div class="player-meta">${p.position ?? ''}</div>
+          <div class="player-meta">Week: ${weekLabel}</div>
         </div>
 
         <div class="invite-actions">
@@ -313,8 +306,28 @@ async function loadPlayers(teamId) {
   try {
     status.textContent = "Hleð leikmenn…";
     const players = await api.getPlayers(teamId);
+    let assignments = {};
+    try {
+      const ids = players.map(p => p.id);
+      if (ids.length) {
+        const { data: wa } = await supabase
+          .from("week_assignments")
+          .select("player_id, week_id, assigned_at, weeks:week_id (id, title, week_number)")
+          .in("player_id", ids)
+          .order("assigned_at", { ascending: false });
+        if (wa) {
+          wa.forEach(row => {
+            if (!assignments[row.player_id]) {
+              assignments[row.player_id] = row;
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Assignments load failed:", err?.message || err);
+    }
     status.textContent = `Leikmenn: ${players.length}`;
-    renderPlayers(players);
+    renderPlayers(players, assignments);
     updateAddState(signedIn, teamId);
     window.dispatchEvent(new CustomEvent('players:updated', { detail: { teamId, players } }));
   } catch (e) {

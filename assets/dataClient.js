@@ -50,7 +50,7 @@ export const api = {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/coach.html`
+        emailRedirectTo: LOGIN_URL
       }
     });
     if (error) {
@@ -63,7 +63,7 @@ export const api = {
   async sendMagicLink(email) {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/coach.html` }
+      options: { emailRedirectTo: LOGIN_URL }
     });
     if (error) {
       console.error("Supabase signInWithOtp error:", error);

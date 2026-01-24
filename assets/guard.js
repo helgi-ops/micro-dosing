@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { waitForAuthReadySafe } from "./dataClient.js";
 
 const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
 export const ROUTES = {
@@ -6,12 +7,7 @@ export const ROUTES = {
 };
 
 export async function requireAuth(requiredRole) {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    window.location.href = ROUTES.login;
-    return null;
-  }
-  const session = data?.session;
+  const session = await waitForAuthReadySafe();
   if (!session?.user?.id) {
     window.location.href = ROUTES.login;
     return null;
@@ -48,8 +44,7 @@ export async function requireAuth(requiredRole) {
 
 // Convenience to support existing code expecting multi-role array
 export async function requireRole(roles = []) {
-  const { data } = await supabase.auth.getSession();
-  const session = data?.session;
+  const session = await waitForAuthReadySafe();
   if (!session?.user?.id) {
     window.location.href = ROUTES.login;
     return { ok: false };
