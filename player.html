@@ -214,10 +214,11 @@
     <script type="module">
       import { requirePlayerAuth } from "./assets/player-auth-guard.js";
       import { supabase, api } from "./assets/dataClient.js";
-      import { requireRoleOrRedirect } from "./assets/app-auth.js";
+      import { requireAuth } from "./assets/guard.js";
 
       (async function () {
-        await requireRoleOrRedirect("player");
+        await requireAuth("player");
+        await requirePlayerAuth();
         const statusEl = document.getElementById("assigned-week-status");
         const metaEl = document.getElementById("assigned-week-meta");
         const daysEl = document.getElementById("assigned-week-days");

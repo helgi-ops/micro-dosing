@@ -15,7 +15,11 @@ export async function resolveRole() {
       .eq("auth_user_id", userId)
       .maybeSingle();
     if (playerErr) console.warn("[resolveRole] players error", playerErr);
-    if (playerRow) return { role: "player", player: playerRow, session };
+    if (playerRow) {
+      const res = { role: "player", player: playerRow, session };
+      console.log("[auth] role resolved:", res.role, res);
+      return res;
+    }
 
     const { data: tmRows, error: tmErr } = await supabase
       .from("team_members")
@@ -23,13 +27,19 @@ export async function resolveRole() {
       .eq("user_id", userId);
     if (tmErr) console.warn("[resolveRole] team_members error", tmErr);
     if (tmRows && tmRows.length) {
-      return { role: "coach", teamIds: tmRows.map((r) => r.team_id), session };
+      const res = { role: "coach", teamIds: tmRows.map((r) => r.team_id), session };
+      console.log("[auth] role resolved:", res.role, res);
+      return res;
     }
 
-    return { role: "unassigned", session };
+    const res = { role: "unassigned", session };
+    console.log("[auth] role resolved:", res.role, res);
+    return res;
   } catch (e) {
     console.error("[resolveRole] fatal", e);
-    return { role: "anonymous" };
+    const res = { role: "anonymous" };
+    console.log("[auth] role resolved:", res.role, res);
+    return res;
   }
 }
 

@@ -5173,7 +5173,6 @@
     });
   }
 </script>
-<script type="module" src="./assets/supabaseClient.js"></script>
 <script type="module" src="./assets/dataClient.js"></script>
 <script type="module" src="./assets/app-auth.js"></script>
 <script type="module" src="./assets/roster-supabase.js"></script>
@@ -5574,8 +5573,8 @@
 
 <!-- 4️⃣ Microdose kerfið þitt -->
   <script type="module">
-    import { requireRoleOrRedirect } from "./assets/app-auth.js";
-    await requireRoleOrRedirect("coach");
+    import { requireAuth } from "./assets/guard.js";
+    await requireAuth("coach");
 
     const client = window?.api?.supabase || window?.supabase || window?.api || null;
 
