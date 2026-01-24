@@ -195,6 +195,23 @@ export const api = {
   },
 }; // end api
 
+// ===== Named export shims (keep legacy imports working) =====
+export function isAuthReady() {
+  if (typeof window !== "undefined" && window.__authReady != null) return !!window.__authReady;
+  return !!supabase;
+}
+
+export function buildPlayerLink(playerId) {
+  const url = new URL(`${window.location.origin}/player.html`);
+  if (playerId) url.searchParams.set("id", playerId);
+  return url.toString();
+}
+
+export async function markDayDone(payload) {
+  if (api && typeof api.markDayDone === "function") return api.markDayDone(payload);
+  return { ok: true, skipped: true };
+}
+
 // ===== Legacy named exports (shim) =====
 export async function listMyTeams() {
   return api.listMyTeams();
