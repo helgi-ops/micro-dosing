@@ -73,7 +73,7 @@
 
     <script type="module">
       import { routeFromLogin } from "./assets/authGuard.js";
-      await routeFromLogin();
+      routeFromLogin().catch((err) => console.error("routeFromLogin error", err));
     </script>
     <script type="module" src="./assets/login.js"></script>
   </body>
