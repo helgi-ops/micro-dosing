@@ -13,32 +13,6 @@ export async function requireAuth(requiredRole) {
     return null;
   }
 
-  const userId = session.user.id;
-
-  if (requiredRole === "coach") {
-    const { data: tm, error: tmErr } = await supabase
-      .from("team_members")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (tmErr || !tm) {
-      window.location.href = ROUTES.login;
-      return null;
-    }
-  }
-
-  if (requiredRole === "player") {
-    const { data: pl, error: plErr } = await supabase
-      .from("players")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (plErr || !pl) {
-      window.location.href = ROUTES.login;
-      return null;
-    }
-  }
-
   return session;
 }
 
