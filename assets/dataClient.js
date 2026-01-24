@@ -18,6 +18,7 @@ const _supabase =
       autoRefreshToken: true,
       detectSessionInUrl: true,
       storage: window.localStorage,
+      storageKey: "coach-dashboard-auth",
     }
   }));
 
@@ -1237,7 +1238,25 @@ window.__authReady =
   });
 
 export async function waitForAuthReadySafe() {
-  return window.__authReady;
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (!error && data?.session) {
+      __cachedSession = data.session;
+      __authReady = true;
+      return data.session;
+    }
+  } catch (_) {}
+
+  try {
+    const sess = await Promise.race([
+      window.__authReady,
+      new Promise((resolve) => setTimeout(() => resolve(null), 2000)),
+    ]);
+    if (sess) __cachedSession = sess;
+    return sess || null;
+  } catch {
+    return null;
+  }
 }
 
 // expose for non-module scripts (modals, legacy code)
