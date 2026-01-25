@@ -14,52 +14,53 @@ import {
 import { DAY_TYPE_OPTIONS, normalizeDayType, getDayTypeProfile } from "./dayTypeProfiles.js";
 import { requireRole } from "./guard.js";
 
-const coachGate = await requireRole(["admin", "coach"]);
+async function main() {
+  const coachGate = await requireRole(["admin", "coach"]);
 
-// Allow fallback role when team_members fetch fails (Firefox NetworkError / ETP).
-// Do NOT throw — throwing breaks routing + UI initialization.
-if (!coachGate.ok && !coachGate.fallback) {
-  const hint =
-    coachGate?.hint ||
-    (String(coachGate?.error || "").includes("NetworkError")
-      ? "Firefox: slökktu á Enhanced Tracking Protection (skjöld-ikon við URL) og refresh."
-      : "Þú ert ekki með coach/admin aðgang í þessu liði.");
+  // Allow fallback role when team_members fetch fails (Firefox NetworkError / ETP).
+  // Do NOT throw — throwing breaks routing + UI initialization.
+  if (!coachGate.ok && !coachGate.fallback) {
+    const errMsg = String(coachGate?.error || "");
+    const hint =
+      coachGate?.hint ||
+      (errMsg.includes("NetworkError")
+        ? "Firefox: slökktu á Enhanced Tracking Protection (skjöld-ikon við URL) og refresh."
+        : "Þú ert ekki með coach/admin aðgang í þessu liði.");
 
-  document.body.innerHTML = `
-    <div style="padding:20px;font-family:system-ui">
-      <div style="font-size:18px;margin-bottom:8px">Not authorized for coach view.</div>
-      <div style="opacity:.85;margin-bottom:10px">${hint}</div>
-      <div style="opacity:.65;font-size:12px">
-        role=${coachGate?.role || "?"}
-        team=${coachGate?.teamId || "-"}
+    document.body.innerHTML = `
+      <div style="padding:20px;font-family:system-ui">
+        <div style="font-size:18px;margin-bottom:8px">Not authorized for coach view.</div>
+        <div style="opacity:.85;margin-bottom:10px">${hint}</div>
+        <div style="opacity:.65;font-size:12px">
+          role=${coachGate?.role || "?"} · team=${coachGate?.teamId || "-"}
+        </div>
       </div>
-    </div>
-  `;
+    `;
 
-  console.warn("[microdose-ui] blocked by requireRole()", coachGate);
-  // IMPORTANT: return instead of throwing
-  return;
-}
+    console.warn("[microdose-ui] blocked by requireRole()", coachGate);
+    // IMPORTANT: return instead of throwing
+    return;
+  }
 
-// If fallback was used, warn but continue so UI can load
-if (coachGate.fallback) {
-  console.warn("[microdose-ui] requireRole fallback active (likely Firefox ETP). Continuing.", coachGate);
-}
+  // If fallback was used, warn but continue so UI can load
+  if (coachGate.fallback) {
+    console.warn("[microdose-ui] requireRole fallback active (likely Firefox ETP). Continuing.", coachGate);
+  }
 
-// Prevent Supabase auth restore aborts (Firefox/Safari) from crashing UI (install once).
-if (!window.__abortRejectionGuardInstalled) {
-  window.__abortRejectionGuardInstalled = true;
-  window.addEventListener("unhandledrejection", (event) => {
-    const r = event.reason;
-    const name = String(r?.name || "");
-    const msg = String(r?.message || r || "");
-    if (name === "AbortError" || msg.includes("The operation was aborted")) {
-      event.preventDefault();
-    }
-  });
-}
+  // Prevent Supabase auth restore aborts (Firefox/Safari) from crashing UI (install once).
+  if (!window.__abortRejectionGuardInstalled) {
+    window.__abortRejectionGuardInstalled = true;
+    window.addEventListener("unhandledrejection", (event) => {
+      const r = event.reason;
+      const name = String(r?.name || "");
+      const msg = String(r?.message || r || "");
+      if (name === "AbortError" || msg.includes("The operation was aborted")) {
+        event.preventDefault();
+      }
+    });
+  }
 
-(() => {
+  (() => {
   // ---------- Supabase bridge & helpers ----------
   // Always use the module client (do NOT rely on window.*)
   const supabaseClient = supabase;
@@ -6137,3 +6138,9 @@ function renderWeekCards(resultOverride, scheduleOverride) {
 // =========================
 // Magic link landing + auth status refresh
 // =========================
+
+} // end main
+
+main().catch((e) => {
+  console.error("[microdose-ui] main() failed", e);
+});
