@@ -5295,14 +5295,10 @@
 </script>
 
 <!-- Assign Week modal logic -->
-<script>
-(function () {
-  const sb = window.supabase || (window.api && window.api.supabase);
-  if (!sb) {
-    console.warn("Assign Week: supabase client not found on window.supabase or window.api.supabase");
-    return;
-  }
+<script type="module">
+import { supabase as sb } from "./assets/dataClient.js";
 
+(function () {
   const $ = (id) => document.getElementById(id);
 
   const modal = $("assign-week-modal");
