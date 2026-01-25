@@ -28,12 +28,15 @@ function nowISO() {
   return new Date().toISOString();
 }
 
-// --- Firefox-safe auth hydration ---
+// --- Firefox-safe auth hydration (define ONCE) ---
 let __authReadyResolve;
 const __authReady = new Promise((res) => (__authReadyResolve = res));
 
 supabase.auth.onAuthStateChange((_event, session) => {
-  if (__authReadyResolve) __authReadyResolve(session || null);
+  if (__authReadyResolve) {
+    __authReadyResolve(session || null);
+    __authReadyResolve = null; // resolve once
+  }
 });
 
 export async function waitForAuthReadySafe(timeoutMs = 1500) {
@@ -43,14 +46,14 @@ export async function waitForAuthReadySafe(timeoutMs = 1500) {
   ]);
 }
 
-let __authReady = false;
+let __authReadyFlag = false;
 export function isAuthReady() {
-  return __authReady;
+  return __authReadyFlag;
 }
 
 async function sessionUserId() {
   const { data, error } = await supabase.auth.getSession();
-  __authReady = true;
+  __authReadyFlag = true;
   if (error) throw error;
   return data?.session?.user?.id || null;
 }
@@ -61,14 +64,14 @@ export const api = {
 
   async initAuth() {
     const { data, error } = await supabase.auth.getSession();
-    __authReady = true;
+    __authReadyFlag = true;
     if (error) throw error;
     return data?.session || null;
   },
 
   async getCachedSession() {
     const { data, error } = await supabase.auth.getSession();
-    __authReady = true;
+    __authReadyFlag = true;
     if (error) return null;
     return data?.session || null;
   },
