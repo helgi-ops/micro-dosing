@@ -20,6 +20,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: "coach-dashboard-auth",
+    storage: window.localStorage, // explicit storage for privacy-strict browsers
   },
 });
 

@@ -144,16 +144,15 @@ async function main() {
         new Promise((_, rej) => setTimeout(() => rej(new Error("auth timeout")), 2000))
       ]).catch(() => null);
 
-      let session = await getCachedSession();
-      if (!session) {
-        try {
-          const { data } = await supabaseClient.auth.getSession();
-          session = data?.session || null;
-        } catch (_) {}
-      }
+      const sessionPromise = supabaseClient.auth.getSession();
+      const session = await Promise.race([
+        sessionPromise.then((r) => r?.data?.session || null),
+        new Promise((res) => setTimeout(() => res(null), 1500)),
+      ]);
+
       const user = session?.user;
       if (!session || !user) {
-        line.textContent = "Ekki innskráð(ur). Sendu innskráningartengil.";
+        line.innerHTML = `Ekki innskráð(ur). <a href="/index.html?next=%2Fcoach.html">Fara í innskráningu</a>`;
         if (teamLine) teamLine.textContent = "Lið: —";
         if (signOutBtn) signOutBtn.style.display = "none";
         try {
