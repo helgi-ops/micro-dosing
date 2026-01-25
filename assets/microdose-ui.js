@@ -7,7 +7,7 @@ import {
   listMyDayCompletionsForWeek,
   markDayDone,
   supabase,
-  waitForAuthReady,
+  waitForAuthReadySafe,
   getCachedSession,
   listMyTeams
 } from "./dataClient.js";
@@ -139,16 +139,11 @@ async function main() {
     try {
       line.textContent = "Athuga innskráningu…";
 
-      await Promise.race([
-        waitForAuthReady(),
-        new Promise((_, rej) => setTimeout(() => rej(new Error("auth timeout")), 2000))
-      ]).catch(() => null);
-
-      const sessionPromise = supabaseClient.auth.getSession();
-      const session = await Promise.race([
-        sessionPromise.then((r) => r?.data?.session || null),
-        new Promise((res) => setTimeout(() => res(null), 1500)),
-      ]);
+      const session =
+        (await waitForAuthReadySafe()) ||
+        (await supabaseClient.auth.getUser()).data?.user
+          ? { user: (await supabaseClient.auth.getUser()).data.user }
+          : null;
 
       const user = session?.user;
       if (!session || !user) {

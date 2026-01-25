@@ -28,6 +28,21 @@ function nowISO() {
   return new Date().toISOString();
 }
 
+// --- Firefox-safe auth hydration ---
+let __authReadyResolve;
+const __authReady = new Promise((res) => (__authReadyResolve = res));
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  if (__authReadyResolve) __authReadyResolve(session || null);
+});
+
+export async function waitForAuthReadySafe(timeoutMs = 1500) {
+  return Promise.race([
+    __authReady,
+    new Promise((res) => setTimeout(() => res(null), timeoutMs)),
+  ]);
+}
+
 let __authReady = false;
 export function isAuthReady() {
   return __authReady;
