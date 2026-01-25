@@ -22,6 +22,7 @@ const _supabase =
   }));
 
 export const supabase = _supabase;
+
 // HARD GUARANTEE: expose supabase client globally (legacy compatibility)
 if (typeof window !== "undefined") {
   window.supabase = supabase;
@@ -114,15 +115,23 @@ export const api = {
     if (error) throw error;
   },
 
-  async getMyTeams(userId) {
+  async listMyTeams() {
+    const { data: sess, error: sErr } = await supabase.auth.getSession();
+    if (sErr) throw sErr;
+    const userId = sess?.session?.user?.id;
+    if (!userId) throw new Error("Not signed in");
+
     const { data, error } = await supabase
       .from("team_members")
-      .select("team_id, teams:team_id ( id, name )")
+      .select("team_id, teams:team_id (id, name)")
       .eq("user_id", userId);
+
     if (error) throw error;
-    const teams = (data || []).map((r) => r.teams).filter(Boolean);
-    teams.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    return teams;
+
+    return (data || []).map((r) => ({
+      id: r.team_id,
+      name: r.teams?.name || r.team_id,
+    }));
   },
 
   async getTeams() {
@@ -230,25 +239,6 @@ export const api = {
     if (error) throw error;
     return data || [];
   },
-
-  async listMyTeams() {
-    const { data: sess, error: sErr } = await supabase.auth.getSession();
-    if (sErr) throw sErr;
-    const userId = sess?.session?.user?.id;
-    if (!userId) throw new Error("Not signed in");
-
-    const { data, error } = await supabase
-      .from("team_members")
-      .select("team_id, teams:team_id (id, name)")
-      .eq("user_id", userId);
-
-    if (error) throw error;
-
-    return (data || []).map((r) => ({
-      id: r.team_id,
-      name: r.teams?.name || r.team_id,
-    }));
-  },
 }; // end api
 
 // ===== Named export shims (keep legacy imports working) =====
@@ -278,24 +268,4 @@ export async function listMyAssignedWeeks() {
 
 export async function listMyTeams() {
   return api.listMyTeams();
-}
-
-// Legacy global exposure for non-module scripts
-if (typeof window !== "undefined") {
-  window.supabase = supabase;
-  window.api = window.api || {};
-  window.api.supabase = supabase;
-}
-
-// ===== Legacy named exports (shim) =====
-export async function listMyTeams() {
-  return api.listMyTeams();
-}
-
-export async function ensurePlayerToken(token) {
-  return api.ensurePlayerToken(token);
-}
-
-export async function getWeekDays(weekId) {
-  return api.getWeekDays(weekId);
 }
