@@ -272,6 +272,31 @@ export const api = {
     if (error) throw error;
     return data?.session || null;
   },
+
+  async listMyDayCompletionsForWeek(weekId) {
+    if (!weekId) return [];
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const userId = sess?.session?.user?.id;
+      if (!userId) return [];
+      const { data: player, error: pErr } = await supabase
+        .from("players")
+        .select("id")
+        .eq("auth_user_id", userId)
+        .maybeSingle();
+      if (pErr || !player?.id) return [];
+      const { data, error } = await supabase
+        .from("day_completions")
+        .select("id, week_id, day_index, done_at")
+        .eq("player_id", player.id)
+        .eq("week_id", weekId)
+        .order("day_index", { ascending: true });
+      if (error) return [];
+      return data || [];
+    } catch (_) {
+      return [];
+    }
+  },
 }; // end api
 
 // ===== Named export shims (keep legacy imports working) =====
@@ -313,4 +338,8 @@ export async function getWeekDays(weekId) {
 
 export async function initAuth() {
   return api.initAuth();
+}
+
+export async function listMyDayCompletionsForWeek(weekId) {
+  return api.listMyDayCompletionsForWeek(weekId);
 }
