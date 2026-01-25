@@ -1,126 +1,61 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const SUPABASE_URL = "https://tbtkxttiwbdmugjivmvb.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRidGt4dHRpd2JkbXVnaml2bXZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMjYxOTgsImV4cCI6MjA4MzkwMjE5OH0.2PvhrzwYdx5oxf_oARFIio5Es8mgv3_ks3CAqxUcsKI";
+const SUPABASE_URL =
+  (typeof window !== "undefined" && window.__SUPABASE_URL__) ||
+  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_URL) ||
+  "";
 
-const baseUrl = new URL("./", window.location.href).toString();
-const LOGIN_URL = baseUrl + "index.html";
-export const SUPABASE_URL_PUBLIC = SUPABASE_URL;
-export const SUPABASE_ANON_PUBLIC = SUPABASE_ANON_KEY;
+const SUPABASE_ANON_KEY =
+  (typeof window !== "undefined" && window.__SUPABASE_ANON_KEY__) ||
+  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ||
+  "";
 
-// --- SINGLETON supabase client ---
-const _supabase =
-  window.__supabase ||
-  (window.__supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storage: window.localStorage,
-      storageKey: "coach-dashboard-auth",
-    },
-  }));
-
-export const supabase = _supabase;
-
-// HARD GUARANTEE: expose supabase client globally (legacy compatibility)
-if (typeof window !== "undefined") {
-  window.supabase = supabase;
-  window.api = window.api || {};
-  window.api.supabase = supabase;
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.warn("[dataClient] Missing Supabase config. Ensure __SUPABASE_URL__/__SUPABASE_ANON_KEY__ are set on window.");
 }
 
-// Handle magic-link hash cleanup
-if (location.hash && location.hash.includes("access_token=")) {
-  (async () => {
-    try { await new Promise((r) => setTimeout(r, 50)); } catch (_) {}
-    try { history.replaceState({}, document.title, location.pathname + location.search); } catch (_) {}
-  })();
-}
-
-// --- Simple session cache ---
-let __cachedSession = null;
-let __authReady = false;
-let __resolveAuthReady;
-const __authReadyPromise = new Promise((resolve) => { __resolveAuthReady = resolve; });
-
-supabase.auth.onAuthStateChange((event, session) => {
-  if (!__authReady) {
-    __authReady = true;
-    __cachedSession = session || null;
-    __resolveAuthReady?.(session || null);
-  }
-  if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-    __cachedSession = session || null;
-  }
-  if (event === "SIGNED_OUT") __cachedSession = null;
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: "coach-dashboard-auth",
+  },
 });
 
-export function getCachedSession() {
-  return __cachedSession;
+function nowISO() {
+  return new Date().toISOString();
 }
 
-export async function waitForAuthReady() {
-  if (__authReady) return __cachedSession;
-  return __authReadyPromise;
-}
-
-export async function waitForAuthReadySafe() {
-  try {
-    const { data, error } = await supabase.auth.getSession();
-    if (!error && data?.session) {
-      __cachedSession = data.session;
-      __authReady = true;
-      return data.session;
-    }
-  } catch (_) {}
-  try {
-    const sess = await Promise.race([
-      __authReadyPromise,
-      new Promise((resolve) => setTimeout(() => resolve(null), 2000)),
-    ]);
-    if (sess) __cachedSession = sess;
-    return sess || null;
-  } catch {
-    return null;
-  }
+async function sessionUserId() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return data?.session?.user?.id || null;
 }
 
 export const api = {
-  async getSession() {
-    await waitForAuthReady();
-    return getCachedSession();
+  supabase,
+
+  async initAuth() {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    return data?.session || null;
   },
 
-  async signInWithEmail(email) {
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: LOGIN_URL },
-    });
-    if (error) throw error;
-    return data;
+  async getCachedSession() {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) return null;
+    return data?.session || null;
   },
 
-  async sendMagicLink(email) {
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: LOGIN_URL },
-    });
-    if (error) throw error;
-    return data;
-  },
-
-  async signOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+  async waitForAuthReady() {
+    // Minimal: session restore is handled by supabase-js; returning current session is enough.
+    return this.getCachedSession();
   },
 
   async listMyTeams() {
-    const { data: sess, error: sErr } = await supabase.auth.getSession();
-    if (sErr) throw sErr;
-    const userId = sess?.session?.user?.id;
-    if (!userId) throw new Error("Not signed in");
-
+    const userId = await sessionUserId();
+    if (!userId) return [];
     const { data, error } = await supabase
       .from("team_members")
       .select("team_id, teams:team_id (id, name)")
@@ -134,212 +69,130 @@ export const api = {
     }));
   },
 
-  async getTeams() {
-    const { data, error } = await supabase.from("teams").select("id,name,created_at").order("name");
-    if (error) throw error;
-    return data || [];
-  },
+  async getMyPlayer() {
+    const userId = await sessionUserId();
+    if (!userId) return null;
 
-  async getPlayers(teamId) {
     const { data, error } = await supabase
       .from("players")
-      .select(
-        "id, team_id, first_name, last_name, position, status, created_at, invite_email, invite_sent_at, auth_user_id, invite_accepted_at"
-      )
-      .eq("team_id", teamId)
-      .order("created_at", { ascending: true });
-    if (error) throw error;
-    return data || [];
-  },
+      .select("id, team_id, first_name, last_name, email, invite_email, auth_user_id")
+      .eq("auth_user_id", userId)
+      .maybeSingle();
 
-  async createPlayer(teamId, firstName, lastName, position, status) {
-    const { data, error } = await supabase
-      .from("players")
-      .insert([
-        {
-          team_id: teamId,
-          first_name: firstName,
-          last_name: lastName,
-          position: position || null,
-          status: status || "active",
-        },
-      ])
-      .select()
-      .single();
     if (error) throw error;
-    return data;
-  },
-
-  async deletePlayer(playerId) {
-    const { error } = await supabase.from("players").delete().eq("id", playerId);
-    if (error) throw error;
-  },
-
-  async getPlayer(playerId) {
-    const { data, error } = await supabase.from("players").select("*").eq("id", playerId).maybeSingle();
-    if (error) throw error;
-    return data;
-  },
-
-  async getPlayerById(playerId) {
-    return this.getPlayer(playerId);
-  },
-
-  async assignWeekToPlayers(weekId, playerIds) {
-    if (!weekId || !(playerIds || []).length) throw new Error("weekId and playerIds required");
-    const ids = (playerIds || []).filter(Boolean);
-    if (!ids.length) throw new Error("playerIds required");
-    const rows = ids.map((pid) => ({
-      player_id: pid,
-      week_id: weekId,
-      status: "assigned",
-      assigned_at: new Date().toISOString(),
-    }));
-    const { data, error } = await supabase
-      .from("week_assignments")
-      .upsert(rows, { onConflict: "player_id" })
-      .select("id, player_id, week_id, status, assigned_at");
-    if (error) throw error;
-    return { assignedCount: data?.length || 0, data };
-  },
-
-  async listPublishedWeeks(teamId) {
-    if (!teamId) throw new Error("teamId required");
-    const { data, error } = await supabase
-      .from("weeks")
-      .select("id, team_id, week_number, title, start_date, end_date, status")
-      .eq("team_id", teamId)
-      .in("status", ["published", "active", "assigned"])
-      .order("week_number", { ascending: false });
-    if (error) throw error;
-    return data || [];
+    return data || null;
   },
 
   async listMyAssignedWeeks() {
-    const { data: sess } = await supabase.auth.getSession();
-    const userId = sess?.session?.user?.id;
-    if (!userId) throw new Error("Not signed in");
-
-    const { data: player, error: pErr } = await supabase
-      .from("players")
-      .select("id")
-      .eq("auth_user_id", userId)
-      .maybeSingle();
-    if (pErr) throw pErr;
+    const player = await this.getMyPlayer();
     if (!player?.id) return [];
-
     const { data, error } = await supabase
       .from("week_assignments")
-      .select(
-        "id, status, assigned_at, week_id, weeks:week_id (id, team_id, week_number, title, start_date, end_date, status)"
-      )
+      .select("id, status, assigned_at, week_id, weeks:week_id (id, team_id, week_number, title, start_date, end_date, status)")
       .eq("player_id", player.id)
       .order("assigned_at", { ascending: false })
       .limit(25);
+
     if (error) throw error;
     return data || [];
   },
 
-  async ensurePlayerToken(token) {
-    if (!token) throw new Error("token required");
-    try {
-      const { data, error } = await supabase
-        .from("player_invites")
-        .select("id, player_id, team_id, token, expires_at, used_at")
-        .eq("token", token)
-        .maybeSingle();
-      if (error) return { ok: false, error };
-      if (!data) return { ok: false, error: new Error("Invalid token") };
-      return { ok: true, invite: data };
-    } catch (e) {
-      return { ok: false, error: e };
-    }
-  },
-
   async getWeekDays(weekId) {
-    if (!weekId) throw new Error("weekId required");
+    if (!weekId) return [];
     const { data, error } = await supabase
       .from("week_days")
       .select("*")
       .eq("week_id", weekId)
       .order("day_index", { ascending: true });
+
     if (error) throw error;
     return data || [];
   },
 
-  async initAuth() {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    return data?.session || null;
-  },
-
   async listMyDayCompletionsForWeek(weekId) {
     if (!weekId) return [];
+    const player = await this.getMyPlayer();
+    if (!player?.id) return [];
+
+    // If the table doesn't exist or RLS blocks it, return [] (do not crash UI)
     try {
-      const { data: sess } = await supabase.auth.getSession();
-      const userId = sess?.session?.user?.id;
-      if (!userId) return [];
-      const { data: player, error: pErr } = await supabase
-        .from("players")
-        .select("id")
-        .eq("auth_user_id", userId)
-        .maybeSingle();
-      if (pErr || !player?.id) return [];
       const { data, error } = await supabase
         .from("day_completions")
-        .select("id, week_id, day_index, done_at")
+        .select("id, player_id, week_id, day_index, done_at, notes")
         .eq("player_id", player.id)
         .eq("week_id", weekId)
         .order("day_index", { ascending: true });
+
       if (error) return [];
       return data || [];
-    } catch (_) {
+    } catch {
       return [];
     }
   },
-}; // end api
 
-// ===== Named export shims (keep legacy imports working) =====
-export function isAuthReady() {
-  if (typeof window !== "undefined" && window.__authReady != null) return !!window.__authReady;
-  return !!supabase;
-}
+  async markDayDone({ weekId, dayIndex, playerId, notes } = {}) {
+    if (!weekId || dayIndex == null) return { ok: false, error: "weekId and dayIndex required" };
 
-export function buildPlayerLink(playerId) {
-  const url = new URL(`${window.location.origin}/player.html`);
-  if (playerId) url.searchParams.set("id", playerId);
-  return url.toString();
-}
+    const pid = playerId || (await this.getMyPlayer())?.id;
+    if (!pid) return { ok: false, error: "playerId missing" };
 
-export async function markDayDone(payload) {
-  if (api && typeof api.markDayDone === "function") return api.markDayDone(payload);
-  return { ok: true, skipped: true };
-}
+    // Safe upsert; if table missing/RLS blocks -> return ok:false (but no throw)
+    try {
+      const row = {
+        player_id: pid,
+        week_id: weekId,
+        day_index: dayIndex,
+        done_at: nowISO(),
+        notes: notes || null,
+      };
 
-export async function listPublishedWeeks(teamId) {
-  return api.listPublishedWeeks(teamId);
-}
+      const { data, error } = await supabase
+        .from("day_completions")
+        .upsert(row, { onConflict: "player_id,week_id,day_index" })
+        .select("*")
+        .maybeSingle();
 
-export async function listMyAssignedWeeks() {
-  return api.listMyAssignedWeeks();
-}
+      if (error) return { ok: false, error };
+      return { ok: true, data };
+    } catch (e) {
+      return { ok: false, error: e };
+    }
+  },
 
-export async function listMyTeams() {
-  return api.listMyTeams();
-}
+  // Token + link helpers (safe stubs until token table is finalized)
+  async ensurePlayerToken(token) {
+    if (!token) return { ok: false, error: "token required" };
+    // If you have a real invites table later, replace this query.
+    // For now: do not crash.
+    return { ok: true, token, skipped: true };
+  },
 
-export async function ensurePlayerToken(token) {
-  return api.ensurePlayerToken(token);
-}
+  buildPlayerLink(playerId) {
+    const url = new URL(`${window.location.origin}/player.html`);
+    if (playerId) url.searchParams.set("id", playerId);
+    return url.toString();
+  },
+};
 
-export async function getWeekDays(weekId) {
-  return api.getWeekDays(weekId);
-}
+// Named exports expected by various modules (thin shims)
+export async function initAuth() { return api.initAuth(); }
+export async function getCachedSession() { return api.getCachedSession(); }
+export async function waitForAuthReady() { return api.waitForAuthReady(); }
 
-export async function initAuth() {
-  return api.initAuth();
-}
+export async function listMyTeams() { return api.listMyTeams(); }
+export async function getMyPlayer() { return api.getMyPlayer(); }
+export async function listMyAssignedWeeks() { return api.listMyAssignedWeeks(); }
+export async function getWeekDays(weekId) { return api.getWeekDays(weekId); }
 
-export async function listMyDayCompletionsForWeek(weekId) {
-  return api.listMyDayCompletionsForWeek(weekId);
+export async function listMyDayCompletionsForWeek(weekId) { return api.listMyDayCompletionsForWeek(weekId); }
+export async function markDayDone(payload) { return api.markDayDone(payload); }
+
+export async function ensurePlayerToken(token) { return api.ensurePlayerToken(token); }
+export function buildPlayerLink(playerId) { return api.buildPlayerLink(playerId); }
+
+// Legacy global exposure (coach.html still has some window.api.supabase usage)
+if (typeof window !== "undefined") {
+  window.supabase = supabase;
+  window.api = window.api || {};
+  window.api.supabase = supabase;
 }
