@@ -27,23 +27,32 @@ function nowISO() {
   return new Date().toISOString();
 }
 
+let __authReady = false;
+export function isAuthReady() {
+  return __authReady;
+}
+
 async function sessionUserId() {
   const { data, error } = await supabase.auth.getSession();
+  __authReady = true;
   if (error) throw error;
   return data?.session?.user?.id || null;
 }
 
 export const api = {
   supabase,
+  isAuthReady,
 
   async initAuth() {
     const { data, error } = await supabase.auth.getSession();
+    __authReady = true;
     if (error) throw error;
     return data?.session || null;
   },
 
   async getCachedSession() {
     const { data, error } = await supabase.auth.getSession();
+    __authReady = true;
     if (error) return null;
     return data?.session || null;
   },
