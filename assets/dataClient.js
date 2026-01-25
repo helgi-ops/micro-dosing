@@ -239,6 +239,33 @@ export const api = {
     if (error) throw error;
     return data || [];
   },
+
+  async ensurePlayerToken(token) {
+    if (!token) throw new Error("token required");
+    try {
+      const { data, error } = await supabase
+        .from("player_invites")
+        .select("id, player_id, team_id, token, expires_at, used_at")
+        .eq("token", token)
+        .maybeSingle();
+      if (error) return { ok: false, error };
+      if (!data) return { ok: false, error: new Error("Invalid token") };
+      return { ok: true, invite: data };
+    } catch (e) {
+      return { ok: false, error: e };
+    }
+  },
+
+  async getWeekDays(weekId) {
+    if (!weekId) throw new Error("weekId required");
+    const { data, error } = await supabase
+      .from("week_days")
+      .select("*")
+      .eq("week_id", weekId)
+      .order("day_index", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  },
 }; // end api
 
 // ===== Named export shims (keep legacy imports working) =====
@@ -268,4 +295,12 @@ export async function listMyAssignedWeeks() {
 
 export async function listMyTeams() {
   return api.listMyTeams();
+}
+
+export async function ensurePlayerToken(token) {
+  return api.ensurePlayerToken(token);
+}
+
+export async function getWeekDays(weekId) {
+  return api.getWeekDays(weekId);
 }
