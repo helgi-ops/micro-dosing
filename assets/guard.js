@@ -31,3 +31,6 @@ export async function requireAuth(requiredRole) {
 
   return resolved;
 }
+
+// Alias for legacy imports
+export const requireRole = requireAuth;

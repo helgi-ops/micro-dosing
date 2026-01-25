@@ -230,6 +230,25 @@ export const api = {
     if (error) throw error;
     return data || [];
   },
+
+  async listMyTeams() {
+    const { data: sess, error: sErr } = await supabase.auth.getSession();
+    if (sErr) throw sErr;
+    const userId = sess?.session?.user?.id;
+    if (!userId) throw new Error("Not signed in");
+
+    const { data, error } = await supabase
+      .from("team_members")
+      .select("team_id, teams:team_id (id, name)")
+      .eq("user_id", userId);
+
+    if (error) throw error;
+
+    return (data || []).map((r) => ({
+      id: r.team_id,
+      name: r.teams?.name || r.team_id,
+    }));
+  },
 }; // end api
 
 // ===== Named export shims (keep legacy imports working) =====
@@ -255,6 +274,17 @@ export async function listPublishedWeeks(teamId) {
 
 export async function listMyAssignedWeeks() {
   return api.listMyAssignedWeeks();
+}
+
+export async function listMyTeams() {
+  return api.listMyTeams();
+}
+
+// Legacy global exposure for non-module scripts
+if (typeof window !== "undefined") {
+  window.supabase = supabase;
+  window.api = window.api || {};
+  window.api.supabase = supabase;
 }
 
 // ===== Legacy named exports (shim) =====
