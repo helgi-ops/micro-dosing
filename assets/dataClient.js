@@ -266,6 +266,12 @@ export const api = {
     if (error) throw error;
     return data || [];
   },
+
+  async initAuth() {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    return data?.session || null;
+  },
 }; // end api
 
 // ===== Named export shims (keep legacy imports working) =====
@@ -303,4 +309,8 @@ export async function ensurePlayerToken(token) {
 
 export async function getWeekDays(weekId) {
   return api.getWeekDays(weekId);
+}
+
+export async function initAuth() {
+  return api.initAuth();
 }
