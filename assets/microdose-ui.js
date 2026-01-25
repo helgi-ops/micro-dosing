@@ -15,9 +15,35 @@ import { DAY_TYPE_OPTIONS, normalizeDayType, getDayTypeProfile } from "./dayType
 import { requireRole } from "./guard.js";
 
 const coachGate = await requireRole(["admin", "coach"]);
-if (!coachGate.ok) {
-  document.body.innerHTML = `<div style="padding:20px">Not authorized for coach view.</div>`;
-  throw new Error("Forbidden");
+
+// Allow fallback role when team_members fetch fails (Firefox NetworkError / ETP).
+// Do NOT throw — throwing breaks routing + UI initialization.
+if (!coachGate.ok && !coachGate.fallback) {
+  const hint =
+    coachGate?.hint ||
+    (String(coachGate?.error || "").includes("NetworkError")
+      ? "Firefox: slökktu á Enhanced Tracking Protection (skjöld-ikon við URL) og refresh."
+      : "Þú ert ekki með coach/admin aðgang í þessu liði.");
+
+  document.body.innerHTML = `
+    <div style="padding:20px;font-family:system-ui">
+      <div style="font-size:18px;margin-bottom:8px">Not authorized for coach view.</div>
+      <div style="opacity:.85;margin-bottom:10px">${hint}</div>
+      <div style="opacity:.65;font-size:12px">
+        role=${coachGate?.role || "?"}
+        team=${coachGate?.teamId || "-"}
+      </div>
+    </div>
+  `;
+
+  console.warn("[microdose-ui] blocked by requireRole()", coachGate);
+  // IMPORTANT: return instead of throwing
+  return;
+}
+
+// If fallback was used, warn but continue so UI can load
+if (coachGate.fallback) {
+  console.warn("[microdose-ui] requireRole fallback active (likely Firefox ETP). Continuing.", coachGate);
 }
 
 // Prevent Supabase auth restore aborts (Firefox/Safari) from crashing UI (install once).
@@ -117,7 +143,7 @@ if (!window.__abortRejectionGuardInstalled) {
         new Promise((_, rej) => setTimeout(() => rej(new Error("auth timeout")), 2000))
       ]).catch(() => null);
 
-      let session = getCachedSession();
+      let session = await getCachedSession();
       if (!session) {
         try {
           const { data } = await supabaseClient.auth.getSession();

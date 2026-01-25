@@ -83,21 +83,32 @@ export async function routeFromLogin() {
     return;
   }
 
-  const result = await resolveRole();
-  console.log("[routeFromLogin] role", result.role);
+  const res = await resolveRole();
+  console.log("[routeFromLogin] role", res.role, res);
 
-  if (result.role === "player") {
-    location.href = "/player.html";
-    return;
-  }
-  if (result.role === "coach") {
-    location.href = "/coach.html";
-    return;
+  // If truly unassigned (no fallback), keep user on login with message
+  if (res.role === "unassigned" && !res.fallback) {
+    const msgEl = document.getElementById("msg");
+    if (msgEl) msgEl.textContent = "Account is not assigned. Contact admin.";
+    console.warn("[routeFromLogin] Account unassigned");
+    return { ok: false, reason: "unassigned", ...res };
   }
 
-  const msgEl = document.getElementById("msg");
-  if (msgEl) msgEl.textContent = "Account is not assigned. Contact admin.";
-  console.warn("[routeFromLogin] Account unassigned");
+  // Coach/admin or fallback -> coach
+  if (res.role === "admin" || res.role === "coach" || res.fallback) {
+    const next = res.teamId ? `/coach.html?team=${encodeURIComponent(res.teamId)}` : "/coach.html";
+    window.location.assign(next);
+    return { ok: true, to: next, ...res };
+  }
+
+  // Player
+  if (res.role === "player") {
+    const next = "/player.html";
+    window.location.assign(next);
+    return { ok: true, to: next, ...res };
+  }
+
+  return { ok: false, reason: "forbidden", ...res };
 }
 
 // Role gate that returns detail (no redirect here)
@@ -106,14 +117,12 @@ export async function requireRole(allowedRoles = []) {
   const res = await resolveRole(teamId);
 
   const ok = allowedRoles.includes(res.role);
-  if (!ok) {
-    const hint =
-      res?.error?.includes("NetworkError") || res?.fallback
-        ? "Firefox: slökktu á Enhanced Tracking Protection (skjöld-ikon við URL) og refresh."
-        : "Þú ert ekki með coach/admin aðgang í þessu liði.";
+  const hint =
+    res?.error?.includes("NetworkError")
+      ? "Firefox: slökktu á Enhanced Tracking Protection (skjöld-ikon við URL) og refresh."
+      : res.role === "unassigned"
+      ? "Account unassigned: þú ert ekki tengdur við lið í team_members."
+      : "";
 
-    return { ok: false, ...res, hint };
-  }
-
-  return { ok: true, ...res };
+  return { ok, ...res, hint };
 }
