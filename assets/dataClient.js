@@ -97,6 +97,19 @@ export const api = {
     return data || [];
   },
 
+  async listPublishedWeeks(teamId) {
+    if (!teamId) return [];
+    const { data, error } = await supabase
+      .from("weeks")
+      .select("id, title, status, team_id, created_at, updated_at")
+      .eq("team_id", teamId)
+      .eq("status", "published")
+      .order("updated_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
   async getWeekDays(weekId) {
     if (!weekId) return [];
     const { data, error } = await supabase
@@ -182,6 +195,7 @@ export async function waitForAuthReady() { return api.waitForAuthReady(); }
 export async function listMyTeams() { return api.listMyTeams(); }
 export async function getMyPlayer() { return api.getMyPlayer(); }
 export async function listMyAssignedWeeks() { return api.listMyAssignedWeeks(); }
+export async function listPublishedWeeks(teamId) { return api.listPublishedWeeks(teamId); }
 export async function getWeekDays(weekId) { return api.getWeekDays(weekId); }
 
 export async function listMyDayCompletionsForWeek(weekId) { return api.listMyDayCompletionsForWeek(weekId); }
@@ -196,3 +210,13 @@ if (typeof window !== "undefined") {
   window.api = window.api || {};
   window.api.supabase = supabase;
 }
+
+// Backward-compat exports (some legacy modules import these names)
+export const SUPABASE_URL_PUBLIC =
+  (typeof window !== "undefined" && (window.__SUPABASE_URL__ || window.SUPABASE_URL)) || "";
+
+export const SUPABASE_ANON_PUBLIC =
+  (typeof window !== "undefined" && (window.__SUPABASE_ANON_KEY__ || window.SUPABASE_ANON_KEY)) || "";
+
+// Safe alias expected by some auth helpers
+export const waitForAuthReadySafe = waitForAuthReady;
